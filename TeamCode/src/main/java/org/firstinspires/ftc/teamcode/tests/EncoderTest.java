@@ -20,17 +20,11 @@ public class EncoderTest extends LinearOpMode {
             double p3 = forward+left-turn;
             double p4 = forward-left-turn;
             drive.setMotorPowers(p1, p2, p3, p4);
-            /*
-            drive.getEncoders();
-            drive.localizer.updateEncoders(drive.encoders);
-            telemetry.addData("right Encoder",drive.localizer.encoders[0].getCurrentDist());
-            telemetry.addData("left Encoder",drive.localizer.encoders[1].getCurrentDist());
-            telemetry.addData("back Encoder",drive.localizer.encoders[2].getCurrentDist());
-            if (drive.localizer.encoders.length == 4) {
-                telemetry.addData("front Encoder", drive.localizer.encoders[3].getCurrentDist());
-            }
+            telemetry.addData("right Encoder",drive.rightFront.getCurrentPosition());
+            telemetry.addData("left Encoder",drive.leftFront.getCurrentPosition());
+            telemetry.addData("back Encoder",drive.rightBack.getCurrentPosition());
+            telemetry.addData("front Encoder", drive.leftBack.getCurrentPosition());
             telemetry.update();
-             */
         }
     }
 }
