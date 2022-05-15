@@ -31,6 +31,49 @@ public class Localizer {
             this.encoders[i].update(encoders[i]);
         }
     }
+    public void distUpdate(double rightDist, double leftDist){
+        /*Todo:
+         * implement localization readjustment
+         * add averaging based on both sensors
+         */
+        double rightSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) * -6.0;
+        double rightSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) * -6.0;
+        double leftSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) *  6.0;
+        double leftSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) *  6.0;
+
+        double xErrorLeft = 0;
+        double yErrorLeft = 0;
+        if (Math.abs(leftSensorY) <= 64 && Math.abs(leftSensorX) <= 64){ //Make sure the sensor itself is not near a wall
+            leftSensorX += Math.cos(heading) * leftDist;
+            leftSensorY += Math.sin(heading) * leftDist;
+            if (Math.abs(leftSensorX) >= 72 - 6 ^ Math.abs(leftSensorY) >= 72 - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(leftSensorX) >= 72 - 6){ //finding out which of the two walls
+                    xErrorLeft = 72 - leftSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+                }
+                else {
+                    yErrorLeft = 72 - leftSensorY;
+                }
+            }
+        }
+        
+        double xErrorRight = 0;
+        double yErrorRight = 0;
+        if (Math.abs(rightSensorY) <= 64 && Math.abs(rightSensorX) <= 64){
+            rightSensorX += Math.cos(heading) * rightDist;
+            rightSensorY += Math.sin(heading) * rightDist;
+            if (Math.abs(rightSensorX) >= 72 - 6 ^ Math.abs(rightSensorY) >= 72 - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(rightSensorX) >= 72 - 6){ //finding out which of the two walls
+                    xErrorRight = 72 - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+                }
+                else {
+                    yErrorRight = 72 - rightSensorY;
+                }
+            }
+        }
+
+        x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
+        y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
+    }
     public void update(){
         long currentTime = System.nanoTime();
         double loopTime = (currentTime-lastTime)/1000000000.0;
