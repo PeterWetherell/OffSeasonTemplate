@@ -32,10 +32,6 @@ public class Localizer {
         }
     }
     public void distUpdate(double rightDist, double leftDist){
-        /*Todo:
-         * implement localization readjustment
-         * add averaging based on both sensors
-         */
         double rightSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) * -6.0;
         double rightSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) * -6.0;
         double leftSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) *  6.0;
@@ -55,7 +51,7 @@ public class Localizer {
                 }
             }
         }
-        
+
         double xErrorRight = 0;
         double yErrorRight = 0;
         if (Math.abs(rightSensorY) <= 64 && Math.abs(rightSensorX) <= 64){
