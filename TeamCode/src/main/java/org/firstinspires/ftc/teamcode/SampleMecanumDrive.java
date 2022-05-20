@@ -118,7 +118,7 @@ public class SampleMecanumDrive {
 
     public ArrayList<UpdatePriority> motorPriorities;
 
-    Localizer localizer;
+    public Localizer localizer;
 
     public void initMotors(HardwareMap hardwareMap){
         expansionHub1 = hardwareMap.get(ExpansionHubEx.class, "Expansion Hub 1");

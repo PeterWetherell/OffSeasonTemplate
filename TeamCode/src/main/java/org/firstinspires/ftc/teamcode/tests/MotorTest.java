@@ -52,7 +52,7 @@ public class MotorTest extends LinearOpMode {
             motorIndex = motorIndex % drive.motors.size();
 
             telemetry.addData("motorNum", motorIndex);
-            telemetry.addData("motorPos", motorPower[motorIndex]);
+            telemetry.addData("motorPower", motorPower[motorIndex]);
             telemetry.addData("averageMotorTime", totalTime/numLoops);
             telemetry.update();
         }
