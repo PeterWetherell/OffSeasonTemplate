@@ -2,6 +2,9 @@ package org.firstinspires.ftc.teamcode;
 
 import android.util.Log;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.canvas.Canvas;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -32,7 +35,6 @@ public class SampleMecanumDrive {
 
     public AnalogInput rightIntake, leftIntake, depositSensor, distLeft, distRight, magLeft, magRight, flex;
     public VoltageSensor batteryVoltageSensor;
-    public ColorSensor leftWall, rightWall;
     public BNO055IMU imu;
 
     int[] encoders;
@@ -120,6 +122,13 @@ public class SampleMecanumDrive {
 
     public Localizer localizer;
 
+    Pose2d currentPose = new Pose2d(0,0,0);
+    Pose2d currentVel = new Pose2d(0,0,0);
+    Pose2d relCurrentVel = new Pose2d(0,0,0);
+
+    robotComponents r;
+    private final FtcDashboard dashboard;
+
     public void initMotors(HardwareMap hardwareMap){
         expansionHub1 = hardwareMap.get(ExpansionHubEx.class, "Expansion Hub 1");
         leftFront = (ExpansionHubMotor) hardwareMap.dcMotor.get("lf");
@@ -186,9 +195,6 @@ public class SampleMecanumDrive {
             module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
 
-        leftWall = hardwareMap.colorSensor.get("leftWall");
-        rightWall = hardwareMap.colorSensor.get("rightWall");
-
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
@@ -202,6 +208,9 @@ public class SampleMecanumDrive {
         initSensors(hardwareMap);
         localizer = new Localizer();
         transferMineral = false;
+        r = new robotComponents(true);
+        dashboard = FtcDashboard.getInstance();
+        dashboard.setTelemetryTransmissionInterval(25);
     }
     public void pinMotorPowers (double v, double v1, double v2, double v3) {
         motorPriorities.get(0).setTargetPower(v);
@@ -244,7 +253,68 @@ public class SampleMecanumDrive {
 
         updateHub2 = false;
         loopStart = System.nanoTime();
+
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.put("loopSpeed", loopTime);
+
+        packet.put("d/p X", currentPose.getX());
+        packet.put("d/p Y", currentPose.getY());
+        packet.put("d/p Heading (degrees)", Math.toDegrees(currentPose.getHeading()));
+        packet.put("d/v relVelX", relCurrentVel.getX());
+        packet.put("d/v relVelY", relCurrentVel.getY());
+        packet.put("d/v relVelHeading (degrees)", Math.toDegrees(relCurrentVel.getHeading()));
+
+        packet.put("s flexSensor", flexSensorVal);
+        packet.put("r/t turretError (degrees)", Math.toDegrees(targetTurretPose - currentTurretAngle));
+        packet.put("r/d depositVal", depositVal);
+        packet.put("r/s slidesError", targetSlidesPose - currentSlideLength);
+        packet.put("r/s slidesSpeed", currentSlideSpeed);
+        packet.put("r/i intakeSpeed", currentIntakeSpeed);
+        packet.put("r/i rightIntake", rightIntakeVal - intakeMinValRight);
+        packet.put("r/i leftIntake", leftIntakeVal - intakeMinValLeft);
+        packet.put("r/i/m rightMag", magValRight - 1900);
+        packet.put("r/i/m leftMag", magValLeft - 1900);
+
+        Canvas fieldOverlay = packet.fieldOverlay();
+        drawRobot(fieldOverlay,r,currentPose);
+        fieldOverlay.setStroke("#FF0000");
+        fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
+        fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
+        dashboard.sendTelemetryPacket(packet);
     }
+
+    public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
+        for (Component c : r.components){
+            fieldOverlay.setStrokeWidth(c.lineRadius);
+            fieldOverlay.setStroke(c.color);
+            if (c.p.size() == 1){
+                drawPoint(fieldOverlay,c.p.get(0),c.radius,poseEstimate);
+            }
+            else {
+                for (int i = 1; i < c.p.size() + 1; i++) {
+                    drawPoint(fieldOverlay, c.p.get(i % c.p.size()), c.radius, poseEstimate);
+                    drawLine(fieldOverlay, c.p.get(i % c.p.size()), c.p.get((i - 1)%c.p.size()), poseEstimate);
+                }
+            }
+        }
+    }
+
+    public void drawLine(Canvas c, Point p, Point p2, Pose2d pose){
+        double x1 = Math.cos(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) - Math.sin(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + pose.getX();
+        double y1 = Math.cos(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + Math.sin(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) + pose.getY();
+        double x2 = Math.cos(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) - Math.sin(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + pose.getX();
+        double y2 = Math.cos(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + Math.sin(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) + pose.getY();
+        c.strokeLine(x1,y1,x2,y2);
+    }
+
+    public void drawPoint(Canvas c, Point p, double radius, Pose2d pose){
+        if (radius != 0){
+            double x = Math.cos(pose.getHeading())*p.x - Math.sin(pose.getHeading())*p.y + pose.getX();
+            double y = Math.cos(pose.getHeading())*p.y + Math.sin(pose.getHeading())*p.x + pose.getY();
+            c.strokeCircle(x,y,radius);
+        }
+    }
+
     public void getEncoders(){
         bulkData = expansionHub1.getBulkInputData();
         if (bulkData != null) {
@@ -254,11 +324,17 @@ public class SampleMecanumDrive {
                 encoders[2] = bulkData.getMotorCurrentPosition(rightBack);
                 localizer.updateEncoders(encoders);
                 localizer.update();
+
+                currentPose = localizer.currentPose;
+                relCurrentVel = localizer.relCurrentVel;
+                currentVel = localizer.currentVel;
+
                 currentIntakeSpeed = ((double) bulkData.getMotorVelocity(leftBack)) / (((1.0+(46.0/11.0)) * 28.0) / (26.0/19.0));
                 rightIntakeVal = bulkData.getAnalogInputValue(rightIntake);
                 leftIntakeVal = bulkData.getAnalogInputValue(leftIntake);
                 depositVal = bulkData.getAnalogInputValue(depositSensor);
                 flexSensorVal = bulkData.getAnalogInputValue(flex);
+                localizer.wallUpdate(flexSensorVal);
             }
             catch (Exception e){
                 Log.e("******* Error due to ",e.getClass().getName());

@@ -18,6 +18,9 @@ public class Localizer {
     ArrayList<Pose2d> relHistory = new ArrayList<Pose2d>();
     ArrayList<Double> loopTimes = new ArrayList<Double>();
 
+    Pose2d leftSensor = new Pose2d(0,0);
+    Pose2d rightSensor = new Pose2d(0,0);
+
     public Localizer(){
         encoders = new Encoder[3];
         encoders[0] = new Encoder(new Pose2d(0.125,-4.809341+0.125),1.0);
@@ -29,6 +32,21 @@ public class Localizer {
     public void updateEncoders(int[] encoders){
         for (int i = 0; i < this.encoders.length; i ++){
             this.encoders[i].update(encoders[i]);
+        }
+    }
+    public void wallUpdate(double val){
+        double valTouchIn = 100;
+        double valTouchOut = 380;
+        if (val < valTouchOut){
+            double a = 6.75 + (val - valTouchIn)/(valTouchOut - valTouchIn) * 0.5;
+            double sensorX = Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
+            double sensorY = Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
+            if (Math.abs(x + sensorX) >= 68){
+                x = 72 * Math.signum(sensorX + x) - sensorX;
+            }
+            if (Math.abs(y + sensorY) >= 68){
+                y = 72 * Math.signum(sensorY + y) - sensorY;
+            }
         }
     }
     public void distUpdate(double rightDist, double leftDist){
@@ -44,10 +62,10 @@ public class Localizer {
             leftSensorY += Math.sin(heading) * leftDist;
             if (Math.abs(leftSensorX) >= 72 - 6 ^ Math.abs(leftSensorY) >= 72 - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
                 if (Math.abs(leftSensorX) >= 72 - 6){ //finding out which of the two walls
-                    xErrorLeft = 72 - leftSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+                    xErrorLeft = 72 * Math.signum(leftSensorX) - leftSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
                 }
                 else {
-                    yErrorLeft = 72 - leftSensorY;
+                    yErrorLeft = 72 * Math.signum(leftSensorY) - leftSensorY;
                 }
             }
         }
@@ -59,13 +77,16 @@ public class Localizer {
             rightSensorY += Math.sin(heading) * rightDist;
             if (Math.abs(rightSensorX) >= 72 - 6 ^ Math.abs(rightSensorY) >= 72 - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
                 if (Math.abs(rightSensorX) >= 72 - 6){ //finding out which of the two walls
-                    xErrorRight = 72 - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+                    xErrorRight = 72 * Math.signum(rightSensorX) - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
                 }
                 else {
-                    yErrorRight = 72 - rightSensorY;
+                    yErrorRight = 72 * Math.signum(rightSensorY) - rightSensorY;
                 }
             }
         }
+
+        leftSensor = new Pose2d(leftSensorX,leftSensorY);
+        rightSensor = new Pose2d(rightSensorX,rightSensorY);
 
         x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
         y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
