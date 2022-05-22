@@ -128,6 +128,8 @@ public class SampleMecanumDrive {
     public Pose2d currentVel = new Pose2d(0,0,0);
     public Pose2d relCurrentVel = new Pose2d(0,0,0);
 
+    public Pose2d target = null;
+
     robotComponents r;
     private final FtcDashboard dashboard;
 
@@ -232,17 +234,26 @@ public class SampleMecanumDrive {
 
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
 
-        updateIntake();
-        updateSlides();
+        if (loops % 100 == 0){
+            //IMU
+        }
+        else if (loops % 3 == 0) {
+            updateIntake();
+            updateSlides();
 
-        //Finds the correct value to set for the motor powers for the slides
-        updateTurretHeading();
-        updateSlidesLength();
+            //Finds the correct value to set for the motor powers for the slides
+            updateTurretHeading();
+            updateSlidesLength();
+        }
 
         loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
         double targetLoopLength = 0.01; //Sets the target loop time in seconds
         double a = 1;
         int numMotorsUpdated = 0;
+
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.put("loopSpeedBeforeMotors", loopTime * 1000);
+
         while(loopTime <= targetLoopLength && a > 0){ // updates the motors while still time remaining in the loop
             numMotorsUpdated ++;
             int bestIndex = 0;
@@ -265,7 +276,6 @@ public class SampleMecanumDrive {
         updateHub2 = false;
         loopStart = System.nanoTime();
 
-        TelemetryPacket packet = new TelemetryPacket();
         packet.put("loopSpeed", loopTime * 1000);
         packet.put("numMotorsUpdated", numMotorsUpdated);
 
@@ -288,6 +298,11 @@ public class SampleMecanumDrive {
         packet.put("r/i/m leftMag", magValLeft - 1900);
 
         Canvas fieldOverlay = packet.fieldOverlay();
+        if (target != null) {
+            packet.put("targetHeading", Math.toDegrees(target.heading));
+            fieldOverlay.setStroke("#00FF00");
+            fieldOverlay.strokeCircle(target.x, target.y, 2);
+        }
         drawRobot(fieldOverlay,r,currentPose);
         fieldOverlay.setStroke("#FF0000");
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
