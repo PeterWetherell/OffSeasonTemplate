@@ -61,6 +61,7 @@ public class SampleMecanumDrive {
     private long loopStart = System.nanoTime();
     double loopTime = 0.0;
     int loops = 0;
+    private long start = System.nanoTime();
 
     public boolean transferMineral;
     public double currentIntake = 0;
@@ -230,6 +231,10 @@ public class SampleMecanumDrive {
         motorPriorities.get(3).setTargetPower(v3);
     }
     public void update(){
+        if (loops == 0){
+            start = System.nanoTime();
+            loopStart = System.nanoTime();
+        }
         loops ++;
 
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
@@ -277,6 +282,7 @@ public class SampleMecanumDrive {
         loopStart = System.nanoTime();
 
         packet.put("loopSpeed", loopTime * 1000);
+        packet.put("avgLoopSpeed", (System.nanoTime() - start) / 1000000.0);
         packet.put("numMotorsUpdated", numMotorsUpdated);
 
         packet.put("d/p X", currentPose.getX());
