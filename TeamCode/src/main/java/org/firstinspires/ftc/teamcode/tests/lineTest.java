@@ -11,7 +11,7 @@ import org.firstinspires.ftc.teamcode.Trajectory;
 import java.util.ArrayList;
 
 @TeleOp
-public class movementTest extends LinearOpMode {
+public class lineTest extends LinearOpMode {
     SampleMecanumDrive drive;
     ArrayList<Pose2d> points = new ArrayList<>();
     @Override
@@ -28,18 +28,26 @@ public class movementTest extends LinearOpMode {
         }
         drive.localizer.x = -12;
         drive.localizer.y = -12;
-        Trajectory trajectory1 = new Trajectory(new Pose2d(-12,-12,0,0,8,0.3), true)
-                .addLine(new Pose2d(60,-12,0,0,24,1))
-                .addLine(new Pose2d(60,60,0,0,24,1))
-                .addLine(new Pose2d(-12,60,0,0,24,1))
-                .addLine(new Pose2d(-12,-12,0,0,24,1))
-                .end();
-        while (opModeIsActive() && trajectory1.points.size() >= 1){
-            drive.target = trajectory1.points.get(0);
-            drive.update();
-            drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
+        for (int i = 0; i < 4; i ++) {
+            Trajectory trajectory1 = new Trajectory(new Pose2d(-12,-12,0,0,8,0.3), true)
+                    .addLine(new Pose2d(60,-12,0,0,8,1))
+                    .end();
+            while (opModeIsActive() && trajectory1.points.size() >= 1){
+                drive.target = trajectory1.points.get(0);
+                drive.update();
+                drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
+            }
+            waitMillis(2000);
+            Trajectory trajectory2 = new Trajectory(new Pose2d(60,-12,0,Math.toRadians(180),8,0.3), true)
+                    .addLine(new Pose2d(-12,-12,0,Math.toRadians(180),8,1))
+                    .end();
+            while (opModeIsActive() && trajectory2.points.size() >= 1){
+                drive.target = trajectory2.points.get(0);
+                drive.update();
+                drive.pinMotorPowers(trajectory2.update(drive.currentPose, drive.relCurrentVel));
+            }
+            waitMillis(2000);
         }
-        waitMillis(2000);
     }
     public void waitMillis(long time){
         long start = System.currentTimeMillis();

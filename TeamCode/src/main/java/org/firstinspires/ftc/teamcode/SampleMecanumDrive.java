@@ -156,14 +156,15 @@ public class SampleMecanumDrive {
         slides2.setDirection(DcMotorSimple.Direction.REVERSE);
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2);
+
         for (int i = 0; i < 4; i ++) {
+            motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             motorPriorities.add(new UpdatePriority(3,5));
         }
         motorPriorities.add(new UpdatePriority(1,2));
         motorPriorities.add(new UpdatePriority(1,3));
         motorPriorities.add(new UpdatePriority(2,6));
-        motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2);
-        Log.e("debug", "motors added to list");
     }
     public void setDriveMode(DcMotor.RunMode runMode){
         leftFront.setMode(runMode);
@@ -187,7 +188,6 @@ public class SampleMecanumDrive {
                 case 9: servos.add(hardwareMap.servo.get("leftOdo")); break;
             }
         }
-        Log.e("debug", "servos added to list");
         duckSpin = hardwareMap.crservo.get("duckSpin");
         duckSpin2 = hardwareMap.crservo.get("duckSpin2");
     }
@@ -230,6 +230,12 @@ public class SampleMecanumDrive {
         motorPriorities.get(2).setTargetPower(v2);
         motorPriorities.get(3).setTargetPower(v3);
     }
+    public void pinMotorPowers (double[] a) {
+        motorPriorities.get(0).setTargetPower(a[0]);
+        motorPriorities.get(1).setTargetPower(a[1]);
+        motorPriorities.get(2).setTargetPower(a[2]);
+        motorPriorities.get(3).setTargetPower(a[3]);
+    }
     public void update(){
         if (loops == 0){
             start = System.nanoTime();
@@ -242,24 +248,22 @@ public class SampleMecanumDrive {
         if (loops % 100 == 0){
             //IMU
         }
-        else if (loops % 3 == 0) {
+        else if (loops % 4 == 0) {
             updateIntake();
             updateSlides();
-
-            //Finds the correct value to set for the motor powers for the slides
             updateTurretHeading();
             updateSlidesLength();
         }
 
         loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
-        double targetLoopLength = 0.01; //Sets the target loop time in seconds
+        double targetLoopLength = 0.008; //Sets the target loop time in seconds
         double a = 1;
         int numMotorsUpdated = 0;
 
         TelemetryPacket packet = new TelemetryPacket();
         packet.put("loopSpeedBeforeMotors", loopTime * 1000);
 
-        while(loopTime <= targetLoopLength && a > 0){ // updates the motors while still time remaining in the loop
+        while(a > 0 && loopTime <= targetLoopLength && numMotorsUpdated <= 2){ // updates the motors while still time remaining in the loop
             numMotorsUpdated ++;
             int bestIndex = 0;
             double bestScore = motorPriorities.get(0).getPriority();
@@ -282,7 +286,7 @@ public class SampleMecanumDrive {
         loopStart = System.nanoTime();
 
         packet.put("loopSpeed", loopTime * 1000);
-        packet.put("avgLoopSpeed", (System.nanoTime() - start) / 1000000.0);
+        packet.put("avgLoopSpeed", (System.nanoTime() - start) / (1000000.0 * loops));
         packet.put("numMotorsUpdated", numMotorsUpdated);
 
         packet.put("d/p X", currentPose.getX());
@@ -314,8 +318,6 @@ public class SampleMecanumDrive {
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
         fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
         dashboard.sendTelemetryPacket(packet);
-        Log.e("currentSlidesPose", currentSlideLength + " ");
-        Log.e("currentSlidesTarget", targetSlidesPose + " ");
     }
 
     public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
@@ -371,6 +373,46 @@ public class SampleMecanumDrive {
                 currentPose = localizer.currentPose;
                 relCurrentVel = localizer.relCurrentVel;
                 currentVel = localizer.currentVel;
+
+                if (intakeDepositTransfer && System.currentTimeMillis() - startIntakeDepositTransfer > 100){
+                    intakeDepositTransfer = false;
+                }
+                if (depositVal >= 15 || currentIntakeSpeed <= -18){
+                    intakeDepositTransfer = true;
+                    startIntakeDepositTransfer = System.currentTimeMillis();
+                }
+
+                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500){
+                    intakeHit = false;
+                }
+                if (currentIntakeSpeed <= 16){
+                    intakeHit = true;
+                    startIntakeHit = System.currentTimeMillis();
+                }
+
+                if (rightIntakeVal >= intakeMinValRight) {
+                    numRightIntake ++;
+                    numZeroRight = 0;
+                }
+                else{
+                    numZeroRight ++;
+                    if (numZeroRight >= 3){
+                        numRightIntake --;
+                    }
+                }
+                numRightIntake = Math.max(0,Math.min(5,numRightIntake));
+
+                if (leftIntakeVal >= intakeMinValLeft) {
+                    numLeftIntake ++;
+                    numZeroLeft = 0;
+                }
+                else{
+                    numZeroLeft ++;
+                    if (numZeroLeft >= 3){
+                        numLeftIntake --;
+                    }
+                }
+                numLeftIntake = Math.max(0,Math.min(5,numLeftIntake));
             }
             catch (Exception e){
                 Log.e("******* Error due to ",e.getClass().getName());
@@ -440,7 +482,7 @@ public class SampleMecanumDrive {
             targetSlideExtensionLength = length - v4BarLength;
             targetV4barOrientation = Math.toRadians(180);
         }
-        while (targetV4barOrientation < 0){
+        if (targetV4barOrientation < 0){
             targetV4barOrientation += Math.PI * 2;
         }
         targetSlideExtensionLength = Math.max(0,targetSlideExtensionLength);
@@ -473,38 +515,6 @@ public class SampleMecanumDrive {
         if (System.currentTimeMillis() - intakeDelay >= 500){
             startIntake = false;
         }
-
-        if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500){
-            intakeHit = false;
-        }
-        if (currentIntakeSpeed <= 16){
-            intakeHit = true;
-            startIntakeHit = System.currentTimeMillis();
-        }
-
-        if (rightIntakeVal >= intakeMinValRight) {
-            numRightIntake ++;
-            numZeroRight = 0;
-        }
-        else{
-            numZeroRight ++;
-            if (numZeroRight >= 3){
-                numRightIntake --;
-            }
-        }
-        numRightIntake = Math.max(0,Math.min(5,numRightIntake));
-
-        if (leftIntakeVal >= intakeMinValLeft) {
-            numLeftIntake ++;
-            numZeroLeft = 0;
-        }
-        else{
-            numZeroLeft ++;
-            if (numZeroLeft >= 3){
-                numLeftIntake --;
-            }
-        }
-        numLeftIntake = Math.max(0,Math.min(5,numLeftIntake));
 
         if (!transferMineral){
             setDepositAngle(depositInterfaceAngle);
@@ -598,14 +608,6 @@ public class SampleMecanumDrive {
         }
         if (System.currentTimeMillis() - slidesDelay >= 500){
             startSlides = false;
-        }
-
-        if (intakeDepositTransfer && System.currentTimeMillis() - startIntakeDepositTransfer > 100){
-            intakeDepositTransfer = false;
-        }
-        if (depositVal >= 15 || currentIntakeSpeed <= -18){
-            intakeDepositTransfer = true;
-            startIntakeDepositTransfer = System.currentTimeMillis();
         }
 
         if (transferMineral) { // I have deposited into the area
