@@ -11,10 +11,12 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.checkerframework.checker.units.qual.A;
 import org.openftc.revextensions2.ExpansionHubEx;
 import org.openftc.revextensions2.ExpansionHubMotor;
 import org.openftc.revextensions2.RevBulkData;
@@ -118,13 +120,13 @@ public class SampleMecanumDrive {
 
     double currentDepositAngle = depositInterfaceAngle;
 
-    public ArrayList<UpdatePriority> motorPriorities;
+    public ArrayList<UpdatePriority> motorPriorities = new ArrayList<>();
 
     public Localizer localizer;
 
-    Pose2d currentPose = new Pose2d(0,0,0);
-    Pose2d currentVel = new Pose2d(0,0,0);
-    Pose2d relCurrentVel = new Pose2d(0,0,0);
+    public Pose2d currentPose = new Pose2d(0,0,0);
+    public Pose2d currentVel = new Pose2d(0,0,0);
+    public Pose2d relCurrentVel = new Pose2d(0,0,0);
 
     robotComponents r;
     private final FtcDashboard dashboard;
@@ -145,14 +147,20 @@ public class SampleMecanumDrive {
         setDriveMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         setDriveMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
+        leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        slides.setDirection(DcMotorSimple.Direction.REVERSE);
+        slides2.setDirection(DcMotorSimple.Direction.REVERSE);
+        turret.setDirection(DcMotorSimple.Direction.REVERSE);
+
         for (int i = 0; i < 4; i ++) {
             motorPriorities.add(new UpdatePriority(3,5));
         }
         motorPriorities.add(new UpdatePriority(1,2));
         motorPriorities.add(new UpdatePriority(1,3));
         motorPriorities.add(new UpdatePriority(2,6));
-
         motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2);
+        Log.e("debug", "motors added to list");
     }
     public void setDriveMode(DcMotor.RunMode runMode){
         leftFront.setMode(runMode);
@@ -176,6 +184,7 @@ public class SampleMecanumDrive {
                 case 9: servos.add(hardwareMap.servo.get("leftOdo")); break;
             }
         }
+        Log.e("debug", "servos added to list");
         duckSpin = hardwareMap.crservo.get("duckSpin");
         duckSpin2 = hardwareMap.crservo.get("duckSpin2");
     }
@@ -233,7 +242,9 @@ public class SampleMecanumDrive {
         loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
         double targetLoopLength = 0.01; //Sets the target loop time in seconds
         double a = 1;
-        while(loopTime <= targetLoopLength && a >= 0){ // updates the motors while still time remaining in the loop
+        int numMotorsUpdated = 0;
+        while(loopTime <= targetLoopLength && a > 0){ // updates the motors while still time remaining in the loop
+            numMotorsUpdated ++;
             int bestIndex = 0;
             double bestScore = motorPriorities.get(0).getPriority();
             for (int i = 1; i < motorPriorities.size(); i ++){ //finding the motor that is most in need of being updated;
@@ -243,7 +254,7 @@ public class SampleMecanumDrive {
                 }
             }
             motors.get(bestIndex).setPower(motorPriorities.get(bestIndex).power); //setting the motor of the one that most needs it
-            if (bestIndex == motorPriorities.size()-1){
+            if (bestIndex == motorPriorities.size() - 1) {
                 slides2.setPower(motorPriorities.get(bestIndex).power); //This deals with the case of the linked mechanism for the slides. If one gets chosen the other must also be chosen
             }
             motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor
@@ -255,7 +266,8 @@ public class SampleMecanumDrive {
         loopStart = System.nanoTime();
 
         TelemetryPacket packet = new TelemetryPacket();
-        packet.put("loopSpeed", loopTime);
+        packet.put("loopSpeed", loopTime * 1000);
+        packet.put("numMotorsUpdated", numMotorsUpdated);
 
         packet.put("d/p X", currentPose.getX());
         packet.put("d/p Y", currentPose.getY());
@@ -281,6 +293,8 @@ public class SampleMecanumDrive {
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
         fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
         dashboard.sendTelemetryPacket(packet);
+        Log.e("currentSlidesPose", currentSlideLength + " ");
+        Log.e("currentSlidesTarget", targetSlidesPose + " ");
     }
 
     public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
@@ -325,16 +339,17 @@ public class SampleMecanumDrive {
                 localizer.updateEncoders(encoders);
                 localizer.update();
 
-                currentPose = localizer.currentPose;
-                relCurrentVel = localizer.relCurrentVel;
-                currentVel = localizer.currentVel;
-
                 currentIntakeSpeed = ((double) bulkData.getMotorVelocity(leftBack)) / (((1.0+(46.0/11.0)) * 28.0) / (26.0/19.0));
                 rightIntakeVal = bulkData.getAnalogInputValue(rightIntake);
                 leftIntakeVal = bulkData.getAnalogInputValue(leftIntake);
                 depositVal = bulkData.getAnalogInputValue(depositSensor);
                 flexSensorVal = bulkData.getAnalogInputValue(flex);
+
                 localizer.wallUpdate(flexSensorVal);
+
+                currentPose = localizer.currentPose;
+                relCurrentVel = localizer.relCurrentVel;
+                currentVel = localizer.currentVel;
             }
             catch (Exception e){
                 Log.e("******* Error due to ",e.getClass().getName());

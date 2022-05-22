@@ -5,8 +5,8 @@ import java.util.ArrayList;
 public class Localizer {
     public Encoder[] encoders;
     long lastTime = System.nanoTime();
-    double x = 0;
-    double y = 0;
+    public double x = 0;
+    public double y = 0;
     double heading = 0;
     double headingOffset = 0;
     double startingHeading = 0;
@@ -42,10 +42,10 @@ public class Localizer {
             double sensorX = Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
             double sensorY = Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
             if (Math.abs(x + sensorX) >= 68){
-                x = 72 * Math.signum(sensorX + x) - sensorX;
+                //x = 72 * Math.signum(sensorX + x) - sensorX;
             }
             if (Math.abs(y + sensorY) >= 68){
-                y = 72 * Math.signum(sensorY + y) - sensorY;
+                //y = 72 * Math.signum(sensorY + y) - sensorY;
             }
         }
     }
@@ -69,6 +69,10 @@ public class Localizer {
                 }
             }
         }
+        else{
+            leftSensorX += Math.cos(heading) * leftDist;
+            leftSensorY += Math.sin(heading) * leftDist;
+        }
 
         double xErrorRight = 0;
         double yErrorRight = 0;
@@ -84,12 +88,16 @@ public class Localizer {
                 }
             }
         }
+        else {
+            rightSensorX += Math.cos(heading) * rightDist;
+            rightSensorY += Math.sin(heading) * rightDist;
+        }
 
         leftSensor = new Pose2d(leftSensorX,leftSensorY);
         rightSensor = new Pose2d(rightSensorX,rightSensorY);
 
-        x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
-        y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
+        //x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
+        //y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
     }
     public void update(){
         long currentTime = System.nanoTime();
