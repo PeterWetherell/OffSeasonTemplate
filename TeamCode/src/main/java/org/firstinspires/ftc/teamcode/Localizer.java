@@ -8,6 +8,7 @@ public class Localizer {
     public double x = 0;
     public double y = 0;
     double heading = 0;
+    double odoHeading = 0;
     double headingOffset = 0;
     double startingHeading = 0;
     Pose2d currentPose;
@@ -20,6 +21,23 @@ public class Localizer {
 
     Pose2d leftSensor = new Pose2d(0,0);
     Pose2d rightSensor = new Pose2d(0,0);
+
+    public void setPose(double x, double y, double h){
+        this.x = x;
+        this.y = y;
+        this.startingHeading += h - this.heading;
+    }
+
+    public void updateHeading(double h){
+        double headingError = (h - odoHeading);
+        while (headingError >= Math.PI){
+            headingError -= Math.PI * 2;
+        }
+        while (headingError <= -Math.PI){
+            headingError += Math.PI * 2;
+        }
+        this.headingOffset += headingError;
+    }
 
     public Localizer(){
         encoders = new Encoder[3];
@@ -110,7 +128,7 @@ public class Localizer {
 
         //This is the heading because the heading is proportional to the difference between the left and right wheel.
         double deltaHeading = (deltaRight - deltaLeft)/Math.abs(encoders[1].y-encoders[0].y);
-        double odoHeading = (encoders[0].getCurrentDist() - encoders[1].getCurrentDist())/(Math.abs(encoders[1].y-encoders[0].y));
+        odoHeading = (encoders[0].getCurrentDist() - encoders[1].getCurrentDist())/(Math.abs(encoders[1].y-encoders[0].y));
         heading = odoHeading + headingOffset + startingHeading;
         //This gives us deltaY because the back minus theta*R is the amount moved to the left minus the amount of movement in the back encoder due to change in heading
         double relDeltaY = deltaBack - deltaHeading*encoders[2].x;

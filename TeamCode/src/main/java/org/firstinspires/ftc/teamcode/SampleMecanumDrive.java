@@ -134,6 +134,9 @@ public class SampleMecanumDrive {
     robotComponents r;
     private final FtcDashboard dashboard;
 
+    public void setPose(double x, double y, double h) {
+        localizer.setPose(x,y,h);
+    }
     public void initMotors(HardwareMap hardwareMap){
         expansionHub1 = hardwareMap.get(ExpansionHubEx.class, "Expansion Hub 1");
         leftFront = (ExpansionHubMotor) hardwareMap.dcMotor.get("lf");
@@ -261,7 +264,7 @@ public class SampleMecanumDrive {
         int numMotorsUpdated = 0;
 
         TelemetryPacket packet = new TelemetryPacket();
-        packet.put("loopSpeedBeforeMotors", loopTime * 1000);
+        packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
 
         while(a > 0 && loopTime <= targetLoopLength && numMotorsUpdated <= 2){ // updates the motors while still time remaining in the loop
             numMotorsUpdated ++;
@@ -285,9 +288,9 @@ public class SampleMecanumDrive {
         updateHub2 = false;
         loopStart = System.nanoTime();
 
-        packet.put("loopSpeed", loopTime * 1000);
-        packet.put("avgLoopSpeed", (System.nanoTime() - start) / (1000000.0 * loops));
-        packet.put("numMotorsUpdated", numMotorsUpdated);
+        packet.put("l loopSpeed", loopTime * 1000);
+        packet.put("l avgLoopSpeed", (System.nanoTime() - start) / (1000000.0 * loops));
+        packet.put("l numMotorsUpdated", numMotorsUpdated);
 
         packet.put("d/p X", currentPose.getX());
         packet.put("d/p Y", currentPose.getY());
@@ -306,6 +309,10 @@ public class SampleMecanumDrive {
         packet.put("r/i leftIntake", leftIntakeVal - intakeMinValLeft);
         packet.put("r/i/m rightMag", magValRight - 1900);
         packet.put("r/i/m leftMag", magValLeft - 1900);
+
+        packet.put("e relXError", (target.x-currentPose.x) * Math.cos(currentPose.heading) - (target.y-currentPose.y) * Math.sin(currentPose.heading));
+        packet.put("e relXError", (target.x-currentPose.x) * Math.sin(currentPose.heading) + (target.y-currentPose.y) * Math.cos(currentPose.heading));
+        packet.put("e headingError", Math.toDegrees(target.heading-currentPose.heading));
 
         Canvas fieldOverlay = packet.fieldOverlay();
         if (target != null) {

@@ -4,13 +4,22 @@ import java.util.ArrayList;
 
 public class Trajectory {
 
-    public ArrayList<Pose2d> points = new ArrayList<>();
+    public ArrayList<Pose2d> points;
     boolean slowDown;
     public Trajectory (Pose2d a, boolean slowDown){
+        points = new ArrayList<>();
         points.add(a);
         this.slowDown = slowDown;
     }
     public Trajectory addLine(Pose2d end){
+        points.set(points.size() - 1, new Pose2d(
+                        points.get(points.size()-1).x,
+                        points.get(points.size()-1).y,
+                        Math.atan2(end.y - points.get(points.size()-1).y,end.x - points.get(points.size()-1).x),
+                        end.headingOffset,
+                        end.radius,
+                        Math.max(points.get(points.size()-1).speed,0.3)
+                ));
         double i = 0;
         ArrayList<Pose2d> newPoints = new ArrayList<>();
         double d = Math.sqrt(Math.pow(end.x-points.get(points.size()-1).x,2)+Math.pow(end.y-points.get(points.size()-1).y,2));
@@ -33,7 +42,7 @@ public class Trajectory {
         return a;
     }
     public Trajectory end(){
-        points.get(points.size()-1).radius = 5;
+        points.get(points.size()-1).radius = 4;
         if (slowDown){
             points.get(points.size()-1).speed = 0.25;
             for (int i = 2; i <= points.size(); i ++){

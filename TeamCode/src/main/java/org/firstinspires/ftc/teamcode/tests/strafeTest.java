@@ -8,10 +8,8 @@ import org.firstinspires.ftc.teamcode.Pose2d;
 import org.firstinspires.ftc.teamcode.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.Trajectory;
 
-import java.util.ArrayList;
-
 @TeleOp
-public class lineTest extends LinearOpMode {
+public class strafeTest extends LinearOpMode {
     SampleMecanumDrive drive;
     @Override
     public void runOpMode() throws InterruptedException {
@@ -25,10 +23,10 @@ public class lineTest extends LinearOpMode {
             drive.motors.get(i).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             drive.motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         }
-        drive.setPose(-12,-12,Math.toRadians(0));
+        drive.setPose(-12,-12,Math.toRadians(90));
         for (int i = 0; i < 4; i ++) {
             Trajectory trajectory1 = new Trajectory(new Pose2d(-12,-12,0,0.3), true)
-                    .addLine(new Pose2d(60,-12,0,0,8,1))
+                    .addLine(new Pose2d(60,-12,0,Math.toRadians(90),8,1))
                     .end();
             while (opModeIsActive() && trajectory1.points.size() >= 1){
                 drive.target = trajectory1.points.get(0);
@@ -37,7 +35,7 @@ public class lineTest extends LinearOpMode {
             }
             waitMillis(2000);
             Trajectory trajectory2 = new Trajectory(new Pose2d(60,-12,0,0.3), true)
-                    .addLine(new Pose2d(-12,-12,0,Math.toRadians(180),8,1))
+                    .addLine(new Pose2d(-12,-12,0,Math.toRadians(-90),8,1))
                     .end();
             while (opModeIsActive() && trajectory2.points.size() >= 1){
                 drive.target = trajectory2.points.get(0);

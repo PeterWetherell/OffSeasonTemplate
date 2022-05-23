@@ -32,4 +32,7 @@ public class Pose2d {
     public Pose2d (double x, double y){
         this(x,y,0);
     }
+    public Pose2d (double x, double y,double heading, double speed){
+        this(x,y,heading,0,0,speed);
+    }
 }
