@@ -13,12 +13,11 @@ import java.util.ArrayList;
 @TeleOp
 public class movementTest extends LinearOpMode {
     SampleMecanumDrive drive;
-    ArrayList<Pose2d> points = new ArrayList<>();
     @Override
     public void runOpMode() throws InterruptedException {
         drive = new SampleMecanumDrive(hardwareMap);
         telemetry.addData("Assumption 1","place the robot facing forward in the bottom right corner of a 4 by 4 field");
-        telemetry.addData("Assumption 2","center the robot on the tile");
+        telemetry.addData("Assumption 2","center the robot on the corner of all 4 tiles");
         telemetry.update();
         waitForStart();
         for (int i = 0; i < 4; i ++){
@@ -28,11 +27,11 @@ public class movementTest extends LinearOpMode {
         }
         drive.localizer.x = -12;
         drive.localizer.y = -12;
-        Trajectory trajectory1 = new Trajectory(new Pose2d(-12,-12,0,0,8,0.3), true)
-                .addLine(new Pose2d(60,-12,0,0,24,1))
-                .addLine(new Pose2d(60,60,0,0,24,1))
-                .addLine(new Pose2d(-12,60,0,0,24,1))
-                .addLine(new Pose2d(-12,-12,0,0,24,1))
+        Trajectory trajectory1 = new Trajectory(new Pose2d(0,0,0,0,8,0.3), true)
+                .addLine(new Pose2d(48,0,0,0,24,1))
+                .addLine(new Pose2d(48,60,0,0,24,1))
+                .addLine(new Pose2d(0,48,0,0,24,1))
+                .addLine(new Pose2d(0,0,0,0,24,1))
                 .end();
         while (opModeIsActive() && trajectory1.points.size() >= 1){
             drive.target = trajectory1.points.get(0);

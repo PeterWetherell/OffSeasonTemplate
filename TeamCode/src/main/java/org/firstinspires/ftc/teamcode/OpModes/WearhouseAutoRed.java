@@ -1,5 +1,6 @@
-package org.firstinspires.ftc.teamcode.tests;
+package org.firstinspires.ftc.teamcode.OpModes;
 
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -8,16 +9,14 @@ import org.firstinspires.ftc.teamcode.Pose2d;
 import org.firstinspires.ftc.teamcode.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.Trajectory;
 
-import java.util.ArrayList;
-
-@TeleOp
-public class lineTest extends LinearOpMode {
+@Autonomous
+public class WearhouseAutoRed  extends LinearOpMode {
     SampleMecanumDrive drive;
     @Override
     public void runOpMode() throws InterruptedException {
         drive = new SampleMecanumDrive(hardwareMap);
         telemetry.addData("Assumption 1","place the robot facing forward in the bottom right corner of a 4 by 4 field");
-        telemetry.addData("Assumption 2","center the robot on the tile");
+        telemetry.addData("Assumption 2","center the robot on the corner of all 4 tiles");
         telemetry.update();
         waitForStart();
         for (int i = 0; i < 4; i ++){
@@ -25,27 +24,32 @@ public class lineTest extends LinearOpMode {
             drive.motors.get(i).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             drive.motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         }
-        drive.localizer.x = -12;
-        drive.localizer.y = -12;
-        for (int i = 0; i < 4; i ++) {
-            Trajectory trajectory1 = new Trajectory(new Pose2d(-12,-12,0,0,8,0.3), true)
-                    .addLine(new Pose2d(60,-12,0,0,8,1))
+        drive.localizer.x = 12;
+        drive.localizer.y = -65.25;
+        int i = 0;
+        while (opModeIsActive()) {
+            Trajectory trajectory1 = new Trajectory(new Pose2d(12, -65.25, 0, 0, 8, 0.3), true)
+                    .addLine(new Pose2d(32, -65.25, 0, 0, 8, 1))
+                    .addLine(new Pose2d(40, -65.25 + (i % 3) * 2.5, 0, 0, 4, 1))
                     .end();
-            while (opModeIsActive() && trajectory1.points.size() >= 1){
+            while (opModeIsActive() && trajectory1.points.size() >= 1) {
                 drive.target = trajectory1.points.get(0);
                 drive.update();
                 drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
             }
-            waitMillis(2000);
-            Trajectory trajectory2 = new Trajectory(new Pose2d(60,-12,0,Math.toRadians(180),8,0.3), true)
-                    .addLine(new Pose2d(-12,-12,0,Math.toRadians(180),8,1))
+            waitMillis(500);
+
+            Trajectory trajectory2 = new Trajectory(new Pose2d(drive.currentPose.x, drive.currentPose.y, Math.toRadians(180), 0, 8, 0.3), true)
+                    .addLine(new Pose2d(40, -65.25,0,Math.toRadians(180),4,1))
+                    .addLine(new Pose2d(12, -65.25,0,Math.toRadians(180),8,1))
                     .end();
-            while (opModeIsActive() && trajectory2.points.size() >= 1){
+            while (opModeIsActive() && trajectory2.points.size() >= 1) {
                 drive.target = trajectory2.points.get(0);
                 drive.update();
                 drive.pinMotorPowers(trajectory2.update(drive.currentPose, drive.relCurrentVel));
             }
-            waitMillis(2000);
+            waitMillis(500);
+            i ++;
         }
     }
     public void waitMillis(long time){
