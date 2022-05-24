@@ -31,7 +31,7 @@ public class Trajectory {
                             Math.atan2(end.y - points.get(points.size()-1).y,end.x - points.get(points.size()-1).x),
                             end.headingOffset,
                             end.radius,
-                            Math.max(Math.max(Math.min((d-4) / 12 * i,1),0) * (end.speed - points.get(points.size()-1).speed) + points.get(points.size()-1).speed, 0.3)
+                            Math.max(Math.max(Math.min((d-4) / 12 * i,1),0) * (end.speed - points.get(points.size()-1).speed) + points.get(points.size()-1).speed, 0.2)
                     )
             );
             i += 0.01;
@@ -44,11 +44,11 @@ public class Trajectory {
     public Trajectory end(){
         points.get(points.size()-1).radius = 4;
         if (slowDown){
-            points.get(points.size()-1).speed = 0.25;
+            points.get(points.size()-1).speed = 0.20;
             for (int i = 2; i <= points.size(); i ++){
                 double d = Math.sqrt(Math.pow(points.get(points.size() - i).x-points.get(points.size()-1).x,2)+Math.pow(points.get(points.size() - i).y-points.get(points.size()-1).y,2)) + points.get(points.size()-i).radius;
-                double speed = 0.25 + Math.max((d-8)/12,0);
-                double radius = 4 + Math.max((d-5)/12,0) * 8;
+                double speed = 0.10 + Math.max((d-8)/15,0);
+                double radius = 6 + Math.max((d-5)/12,0) * 8;
                 if (speed >= 1){
                     Trajectory a = new Trajectory(new Pose2d(0,0), slowDown);
                     a.points = points;
@@ -70,6 +70,7 @@ public class Trajectory {
     }
 
     double lastError = 100;
+    double lastTurnError = 100;
     boolean errorIncreasing = false;
     double velI = 0;
 
@@ -105,21 +106,22 @@ public class Trajectory {
         }
 
         double relErrorX = error * Math.cos(errorHeading);
-        double relErrorY = error * Math.sin(errorHeading) * 1.35;
+        double relErrorY = error * Math.sin(errorHeading) * 1.45;
 
         double turn = errorHeading + points.get(0).headingOffset;
 
         if (points.size() == 1) {
-            if (error < lastError) {
+            if (error > lastError || error < 3 || Math.abs(errorHeading) > Math.abs(lastTurnError) || Math.toDegrees(Math.abs(errorHeading)) <= 15) {
                 errorIncreasing = true;
             }
             lastError = error;
+            lastTurnError = errorHeading;
             if (errorIncreasing) {
                 turn = (points.get(0).heading - currentPose.getHeading()) + points.get(0).headingOffset;
             }
 
             double velError = points.get(0).speed - vel/54.0;
-            velI += velError * 0.008;
+            velI += velError * 0.008 * 0.2;
             velI = Math.min(Math.max(velI,0),1);
 
         }

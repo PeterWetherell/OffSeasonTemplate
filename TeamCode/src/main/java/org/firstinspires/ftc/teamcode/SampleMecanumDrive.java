@@ -249,9 +249,9 @@ public class SampleMecanumDrive {
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
 
         if (loops % 100 == 0){
-            //IMU
+            //localizer.updateHeading(imu.getAngularOrientation().firstAngle);
         }
-        else if (loops % 4 == 0) {
+        else if (loops % 5 == 0) {
             updateIntake();
             updateSlides();
             updateTurretHeading();
@@ -266,7 +266,7 @@ public class SampleMecanumDrive {
         TelemetryPacket packet = new TelemetryPacket();
         packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
 
-        while(a > 0 && loopTime <= targetLoopLength && numMotorsUpdated <= 2){ // updates the motors while still time remaining in the loop
+        while(a > 0 && loopTime <= targetLoopLength && numMotorsUpdated <= 1){ // updates the motors while still time remaining in the loop
             numMotorsUpdated ++;
             int bestIndex = 0;
             double bestScore = motorPriorities.get(0).getPriority();
@@ -310,9 +310,18 @@ public class SampleMecanumDrive {
         packet.put("r/i/m rightMag", magValRight - 1900);
         packet.put("r/i/m leftMag", magValLeft - 1900);
 
-        packet.put("e relXError", (target.x-currentPose.x) * Math.cos(currentPose.heading) - (target.y-currentPose.y) * Math.sin(currentPose.heading));
-        packet.put("e relXError", (target.x-currentPose.x) * Math.sin(currentPose.heading) + (target.y-currentPose.y) * Math.cos(currentPose.heading));
-        packet.put("e headingError", Math.toDegrees(target.heading-currentPose.heading));
+        if (target != null) {
+            packet.put("e relXError", (target.x - currentPose.x) * Math.cos(currentPose.heading) - (target.y - currentPose.y) * Math.sin(currentPose.heading));
+            packet.put("e relYError", (target.x - currentPose.x) * Math.sin(currentPose.heading) + (target.y - currentPose.y) * Math.cos(currentPose.heading));
+            double headingError = (target.heading + target.headingOffset) - currentPose.heading;
+            while (headingError >= Math.PI) {
+                headingError -= 2 * Math.PI;
+            }
+            while (headingError <= -Math.PI) {
+                headingError += 2 * Math.PI;
+            }
+            packet.put("e headingError", Math.toDegrees(headingError));
+        }
 
         Canvas fieldOverlay = packet.fieldOverlay();
         if (target != null) {

@@ -25,10 +25,10 @@ public class lineTest extends LinearOpMode {
             drive.motors.get(i).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             drive.motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         }
-        drive.setPose(-12,-12,Math.toRadians(0));
+        drive.setPose(0,-12,Math.toRadians(0));
         for (int i = 0; i < 4; i ++) {
-            Trajectory trajectory1 = new Trajectory(new Pose2d(-12,-12,0,0.3), true)
-                    .addLine(new Pose2d(60,-12,0,0,8,1))
+            Trajectory trajectory1 = new Trajectory(new Pose2d(0,-12,0,0.2), true)
+                    .addLine(new Pose2d(60,-12,0,0,18,1))
                     .end();
             while (opModeIsActive() && trajectory1.points.size() >= 1){
                 drive.target = trajectory1.points.get(0);
@@ -36,8 +36,8 @@ public class lineTest extends LinearOpMode {
                 drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
             }
             waitMillis(2000);
-            Trajectory trajectory2 = new Trajectory(new Pose2d(60,-12,0,0.3), true)
-                    .addLine(new Pose2d(-12,-12,0,Math.toRadians(180),8,1))
+            Trajectory trajectory2 = new Trajectory(new Pose2d(60,-12,0,0.2), true)
+                    .addLine(new Pose2d(0,-12,0,Math.toRadians(180),18,1))
                     .end();
             while (opModeIsActive() && trajectory2.points.size() >= 1){
                 drive.target = trajectory2.points.get(0);
