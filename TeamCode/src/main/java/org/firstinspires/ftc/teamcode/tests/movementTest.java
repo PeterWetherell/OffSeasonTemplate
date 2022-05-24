@@ -28,7 +28,7 @@ public class movementTest extends LinearOpMode {
         drive.setPose(-12,-12,Math.toRadians(0));
         Trajectory trajectory1 = new Trajectory(new Pose2d(0,0,0,0.3), true)
                 .addLine(new Pose2d(48,0,0,0,24,1))
-                .addLine(new Pose2d(48,60,0,0,24,1))
+                .addLine(new Pose2d(48,48,0,0,24,1))
                 .addLine(new Pose2d(0,48,0,0,24,1))
                 .addLine(new Pose2d(0,0,0,0,24,1))
                 .end();

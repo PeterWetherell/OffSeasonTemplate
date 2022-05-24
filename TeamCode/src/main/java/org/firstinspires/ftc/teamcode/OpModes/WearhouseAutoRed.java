@@ -28,9 +28,10 @@ public class WearhouseAutoRed  extends LinearOpMode {
         drive.localizer.y = -65.25;
         int i = 0;
         while (opModeIsActive()) {
+            double angle = Math.toRadians(10) * (i % 3);
             Trajectory trajectory1 = new Trajectory(new Pose2d(12, -65.25, 0, 0, 8, 0.3), true)
-                    .addLine(new Pose2d(32, -65.25, 0, 0, 8, 1))
-                    .addLine(new Pose2d(40, -65.25 + (i % 3) * 2.5, 0, 0, 4, 1))
+                    .addLine(new Pose2d(32, -65.25, 0, 0, 6, 0.8))
+                    .addLine(new Pose2d(34 + Math.cos(angle) * 8.0, -65.25 + Math.sin(angle) * 8.0, 0, 0, 4, 0.8))
                     .end();
             while (opModeIsActive() && trajectory1.points.size() >= 1) {
                 drive.target = trajectory1.points.get(0);

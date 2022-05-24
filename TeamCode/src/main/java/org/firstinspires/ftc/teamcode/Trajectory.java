@@ -62,6 +62,9 @@ public class Trajectory {
         a.points = points;
         return a;
     }
+    public void endTraj(){
+        points.clear();
+    }
     public double getError(Pose2d currentPose){
         return Math.sqrt(Math.pow(currentPose.x - points.get(0).x,2) + Math.pow(currentPose.y - points.get(0).y,2));
     }
