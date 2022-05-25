@@ -106,7 +106,7 @@ public class Trajectory {
         }
 
         double relErrorX = error * Math.cos(errorHeading);
-        double relErrorY = error * Math.sin(errorHeading) * 1.45;
+        double relErrorY = error * Math.sin(errorHeading) * 1.55;
 
         double turn = errorHeading + points.get(0).headingOffset;
 
@@ -131,7 +131,7 @@ public class Trajectory {
         while (turn <= -Math.PI){
             turn += 2 * Math.PI;
         }
-        double h = Math.max(Math.abs(Math.toDegrees(turn)/55.0), 0.35) * Math.signum(turn);
+        double h = Math.max(Math.abs(Math.toDegrees(turn)/55.0), 0.25) * Math.signum(turn);
         if (Math.abs(turn) <= Math.toRadians(5)){
             h = 0;
         }

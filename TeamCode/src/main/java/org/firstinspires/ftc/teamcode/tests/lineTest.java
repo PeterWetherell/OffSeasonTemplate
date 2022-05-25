@@ -22,8 +22,8 @@ public class lineTest extends LinearOpMode {
         waitForStart();
         for (int i = 0; i < 4; i ++){
             drive.motors.get(i).setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            drive.motors.get(i).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             drive.motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+            drive.motors.get(i).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
         drive.setPose(0,-12,Math.toRadians(0));
         for (int i = 0; i < 4; i ++) {
