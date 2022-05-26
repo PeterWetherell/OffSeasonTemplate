@@ -246,44 +246,69 @@ public class SampleMecanumDrive {
         }
         loops ++;
 
+        long startTimer = System.nanoTime();
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
+        long hub1Time = System.nanoTime() - startTimer;
+        long hub2Time = 0;
+        long updateMech = 0;
+        long motorTime = 0;
+
+        loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
+
+        int numMotorsUpdated = 0;
 
         if (loops % 100 == 0){
             //localizer.updateHeading(imu.getAngularOrientation().firstAngle);
         }
         else if (loops % 5 == 0) {
+            startTimer = System.nanoTime();
+            updateHub2();
+            hub2Time = System.nanoTime() - startTimer;
+            startTimer = System.nanoTime();
             updateIntake();
             updateSlides();
             updateTurretHeading();
             updateSlidesLength();
+            updateMech = System.nanoTime() - startTimer;
         }
+        else {
+            loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
 
-        loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
-        double targetLoopLength = 0.008; //Sets the target loop time in seconds
-        double a = 1;
-        int numMotorsUpdated = 0;
+            packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
 
-        TelemetryPacket packet = new TelemetryPacket();
-        packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
+            double targetLoopLength = 0.005; //Sets the target loop time in seconds
+            double a = 1;
 
-        while(a > 0 && loopTime <= targetLoopLength && numMotorsUpdated <= 1){ // updates the motors while still time remaining in the loop
-            numMotorsUpdated ++;
-            int bestIndex = 0;
-            double bestScore = motorPriorities.get(0).getPriority();
-            for (int i = 1; i < motorPriorities.size(); i ++){ //finding the motor that is most in need of being updated;
-                if (motorPriorities.get(i).getPriority() > bestScore){
-                    bestIndex = i;
-                    bestScore = motorPriorities.get(i).getPriority();
+            startTimer = System.nanoTime();
+
+            while (a > 0 && loopTime <= targetLoopLength && numMotorsUpdated < 2) { // updates the motors while still time remaining in the loop
+                numMotorsUpdated++;
+                int bestIndex = 0;
+                double bestScore = motorPriorities.get(0).getPriority();
+                for (int i = 1; i < motorPriorities.size(); i++) { //finding the motor that is most in need of being updated;
+                    if (motorPriorities.get(i).getPriority() > bestScore) {
+                        bestIndex = i;
+                        bestScore = motorPriorities.get(i).getPriority();
+                    }
+                }
+                motors.get(bestIndex).setPower(motorPriorities.get(bestIndex).power); //setting the motor of the one that most needs it
+                if (bestIndex == motorPriorities.size() - 1) {
+                    slides2.setPower(motorPriorities.get(bestIndex).power); //This deals with the case of the linked mechanism for the slides. If one gets chosen the other must also be chosen
+                }
+                motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor
+                loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
+                a = bestScore; //Checking to make sure a motor was updated because if it wasn't then can move onto next thing
+                if (a == 0){
+                    numMotorsUpdated --;
                 }
             }
-            motors.get(bestIndex).setPower(motorPriorities.get(bestIndex).power); //setting the motor of the one that most needs it
-            if (bestIndex == motorPriorities.size() - 1) {
-                slides2.setPower(motorPriorities.get(bestIndex).power); //This deals with the case of the linked mechanism for the slides. If one gets chosen the other must also be chosen
-            }
-            motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor
-            loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
-            a = bestScore; //Checking to make sure a motor was updated because if it wasn't then can move onto next thing
+
+            motorTime = System.nanoTime() - startTimer;
         }
+
+        Log.e("timeData", hub1Time + "," + motorTime + "," + numMotorsUpdated + "," + hub2Time + "," + updateMech);
 
         updateHub2 = false;
         loopStart = System.nanoTime();

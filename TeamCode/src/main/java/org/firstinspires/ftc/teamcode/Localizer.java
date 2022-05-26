@@ -41,9 +41,9 @@ public class Localizer {
 
     public Localizer(){
         encoders = new Encoder[3];
-        encoders[0] = new Encoder(new Pose2d(0.125,-4.119918272),1.0);
-        encoders[1] = new Encoder(new Pose2d(0.125,5.314013086),  -1.0);
-        encoders[2] = new Encoder(new Pose2d(0.125,3),  -1.0);//6.2232,3,1
+        encoders[0] = new Encoder(new Pose2d(0.125,-4.119918272),1.013856046);
+        encoders[1] = new Encoder(new Pose2d(0.125,5.314013086),  -1.013856046);
+        encoders[2] = new Encoder(new Pose2d(0.125,3),  -1.002930355);//6.2232,3,1
 
         currentPose = new Pose2d(0,0,0);
     }

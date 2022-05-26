@@ -31,7 +31,7 @@ public class Trajectory {
                             Math.atan2(end.y - points.get(points.size()-1).y,end.x - points.get(points.size()-1).x),
                             end.headingOffset,
                             end.radius,
-                            Math.max(Math.max(Math.min((d-4) / 12 * i,1),0) * (end.speed - points.get(points.size()-1).speed) + points.get(points.size()-1).speed, 0.2)
+                            Math.max(Math.max(Math.min((d - end.radius - 4) / 16 * i,1),0) * (end.speed - points.get(points.size()-1).speed) + points.get(points.size()-1).speed, 0.2)
                     )
             );
             i += 0.01;
