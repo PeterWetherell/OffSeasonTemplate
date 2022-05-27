@@ -228,12 +228,14 @@ public class SampleMecanumDrive {
         dashboard.setTelemetryTransmissionInterval(25);
     }
     public void pinMotorPowers (double v, double v1, double v2, double v3) {
+        localizer.updatePowerVector(new double[]{v,v1,v2,v3});
         motorPriorities.get(0).setTargetPower(v);
         motorPriorities.get(1).setTargetPower(v1);
         motorPriorities.get(2).setTargetPower(v2);
         motorPriorities.get(3).setTargetPower(v3);
     }
     public void pinMotorPowers (double[] a) {
+        localizer.updatePowerVector(a);
         motorPriorities.get(0).setTargetPower(a[0]);
         motorPriorities.get(1).setTargetPower(a[1]);
         motorPriorities.get(2).setTargetPower(a[2]);
@@ -864,6 +866,7 @@ public class SampleMecanumDrive {
     }
 
     public void setMotorPowers(double v, double v1, double v2, double v3) {
+        localizer.updatePowerVector(new double[]{v,v1,v2,v3});
         leftFront.setPower(v);
         leftBack.setPower(v1);
         rightBack.setPower(v2);

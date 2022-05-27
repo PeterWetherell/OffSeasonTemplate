@@ -14,6 +14,7 @@ public class Localizer {
     Pose2d currentPose;
     Pose2d currentVel;
     Pose2d relCurrentVel;
+    Pose2d currentPowerVector;
 
     ArrayList<Pose2d> poseHistory = new ArrayList<Pose2d>();
     ArrayList<Pose2d> relHistory = new ArrayList<Pose2d>();
@@ -145,6 +146,18 @@ public class Localizer {
         poseHistory.add(0,currentPose);
         updateVelocity();
     }
+    public void updatePowerVector(double[] p){
+        for (int i = 0; i < p.length; i ++){
+            p[i] = Math.max(Math.min(p[i],1),-1);
+        }
+        double forward = (p[0] + p[1] + p[2] + p[3]) / 4;
+        double left = (-p[0] + p[1] - p[2] + p[3]) / 4 * 0.65; //left power is less than 1 of forward power
+        double turn = (-p[0] - p[1] + p[2] + p[3]) / 4;
+        currentPowerVector.x = forward * Math.cos(heading) - left * Math.sin(heading);
+        currentPowerVector.y = left * Math.cos(heading) + forward * Math.sin(heading);
+        currentPowerVector.heading = turn;
+    }
+
     public void updateVelocity(){
         double targetVelTimeEstimate = 0.2;
         double actualVelTime = 0;
