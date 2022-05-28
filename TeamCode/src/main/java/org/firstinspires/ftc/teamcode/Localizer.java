@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.hardware.DcMotor;
+
 import java.util.ArrayList;
 
 public class Localizer {
@@ -58,6 +60,8 @@ public class Localizer {
         double valTouchOut = 380;
         if (val < valTouchOut){
             double a = 6.75 + (val - valTouchIn)/(valTouchOut - valTouchIn) * 0.5;
+            //5.0 represents the distance forward/back from center of robot
+            //6.75 represents the base and then the equation is being used to determine its actual full extent for left/right.
             double sensorX = Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
             double sensorY = Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
             if (Math.abs(x + sensorX) >= 68){
@@ -65,6 +69,40 @@ public class Localizer {
             }
             if (Math.abs(y + sensorY) >= 68){
                 //y = 72 * Math.signum(sensorY + y) - sensorY;
+            }
+        }
+    }
+
+    long startSideWallRamSide = System.currentTimeMillis();
+    long lastSideWallRamSide = System.currentTimeMillis();
+    long startSideWallRamFront = System.currentTimeMillis();
+    long lastSideWallRamFront = System.currentTimeMillis();
+
+    public void ramWallUpdate(){
+        double robotWidth = 12;
+        double robotLength = 17;
+
+        if (Math.abs(currentVel.y) <= 3 && Math.abs(currentPowerVector.y) >= 0.25){
+            lastSideWallRamSide = System.currentTimeMillis();
+            if (System.currentTimeMillis() - startSideWallRamSide >= 200 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)){
+                y = (72 - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y);
+            }
+        }
+        else{
+            if (System.currentTimeMillis() - lastSideWallRamSide >= 50) {
+                startSideWallRamSide = System.currentTimeMillis();
+            }
+        }
+
+        if (Math.abs(currentVel.x) <= 3 && Math.abs(currentPowerVector.x) >= 0.25){
+            lastSideWallRamFront = System.currentTimeMillis();
+            if (System.currentTimeMillis() - startSideWallRamFront >= 200 && Math.signum(currentPowerVector.x) == Math.signum(currentPose.x)){
+                x = (72 - (Math.abs(Math.cos(heading)) * robotLength / 2.0 + Math.abs(Math.sin(heading)) * robotWidth / 2.0)) * Math.signum(currentPose.x);
+            }
+        }
+        else{
+            if (System.currentTimeMillis() - lastSideWallRamFront >= 50) {
+                startSideWallRamFront = System.currentTimeMillis();
             }
         }
     }
@@ -151,13 +189,12 @@ public class Localizer {
             p[i] = Math.max(Math.min(p[i],1),-1);
         }
         double forward = (p[0] + p[1] + p[2] + p[3]) / 4;
-        double left = (-p[0] + p[1] - p[2] + p[3]) / 4 * 0.65; //left power is less than 1 of forward power
+        double left = (-p[0] + p[1] - p[2] + p[3]) / 4; //left power is less than 1 of forward power
         double turn = (-p[0] - p[1] + p[2] + p[3]) / 4;
         currentPowerVector.x = forward * Math.cos(heading) - left * Math.sin(heading);
         currentPowerVector.y = left * Math.cos(heading) + forward * Math.sin(heading);
         currentPowerVector.heading = turn;
     }
-
     public void updateVelocity(){
         double targetVelTimeEstimate = 0.2;
         double actualVelTime = 0;
