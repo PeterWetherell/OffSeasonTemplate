@@ -13,10 +13,10 @@ public class Localizer {
     double odoHeading = 0;
     double headingOffset = 0;
     double startingHeading = 0;
-    Pose2d currentPose;
-    Pose2d currentVel;
-    Pose2d relCurrentVel;
-    Pose2d currentPowerVector;
+    Pose2d currentPose = new Pose2d(0,0,0);
+    Pose2d currentVel = new Pose2d(0,0,0);
+    Pose2d relCurrentVel = new Pose2d(0,0,0);
+    Pose2d currentPowerVector = new Pose2d(0,0,0);
 
     ArrayList<Pose2d> poseHistory = new ArrayList<Pose2d>();
     ArrayList<Pose2d> relHistory = new ArrayList<Pose2d>();
@@ -84,7 +84,7 @@ public class Localizer {
 
         if (Math.abs(currentVel.y) <= 3 && Math.abs(currentPowerVector.y) >= 0.25){
             lastSideWallRamSide = System.currentTimeMillis();
-            if (System.currentTimeMillis() - startSideWallRamSide >= 200 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)){
+            if (System.currentTimeMillis() - startSideWallRamSide >= 800 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)){
                 y = (72 - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y);
             }
         }
@@ -96,7 +96,7 @@ public class Localizer {
 
         if (Math.abs(currentVel.x) <= 3 && Math.abs(currentPowerVector.x) >= 0.25){
             lastSideWallRamFront = System.currentTimeMillis();
-            if (System.currentTimeMillis() - startSideWallRamFront >= 200 && Math.signum(currentPowerVector.x) == Math.signum(currentPose.x)){
+            if (System.currentTimeMillis() - startSideWallRamFront >= 800 && Math.signum(currentPowerVector.x) == Math.signum(currentPose.x)){
                 x = (72 - (Math.abs(Math.cos(heading)) * robotLength / 2.0 + Math.abs(Math.sin(heading)) * robotWidth / 2.0)) * Math.signum(currentPose.x);
             }
         }
@@ -157,6 +157,8 @@ public class Localizer {
         //y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
     }
     public void update(){
+        ramWallUpdate();
+
         long currentTime = System.nanoTime();
         double loopTime = (currentTime-lastTime)/1000000000.0;
         lastTime = currentTime;
