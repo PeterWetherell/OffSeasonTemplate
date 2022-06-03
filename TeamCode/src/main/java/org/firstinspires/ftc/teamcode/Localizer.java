@@ -31,7 +31,14 @@ public class Localizer {
         this.startingHeading += h - this.heading;
     }
 
+    Pose2d lastUpdatePose = new Pose2d(0,0);
+    boolean firstUpdate = false;
     public void updateHeading(double h){
+        if(!firstUpdate){
+            lastUpdatePose = new Pose2d(x,y);
+        }
+        double deltaX = x - lastUpdatePose.x;
+        double deltaY = y - lastUpdatePose.y;
         double headingError = (h - odoHeading);
         while (headingError >= Math.PI){
             headingError -= Math.PI * 2;
@@ -40,6 +47,11 @@ public class Localizer {
             headingError += Math.PI * 2;
         }
         this.headingOffset += headingError;
+
+        x += deltaX * Math.cos(headingError) - deltaY * Math.sin(headingError);
+        y += deltaY * Math.cos(headingError) + deltaX * Math.sin(headingError);
+
+        lastUpdatePose = new Pose2d(x,y);
     }
 
     public Localizer(){

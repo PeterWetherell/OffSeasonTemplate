@@ -60,7 +60,6 @@ public class SampleMecanumDrive {
 
     private long loopStart = System.nanoTime();
     double loopTime = 0.0;
-    int loops = 0;
     private long start = System.nanoTime();
 
     public boolean transferMineral;
@@ -241,12 +240,17 @@ public class SampleMecanumDrive {
         motorPriorities.get(2).setTargetPower(a[2]);
         motorPriorities.get(3).setTargetPower(a[3]);
     }
+    int loops = 0;
+    int sensorLoops = 0;
+    long startImuTime = System.currentTimeMillis();
     public void update(){
         if (loops == 0){
             start = System.nanoTime();
             loopStart = System.nanoTime();
+            startImuTime = System.currentTimeMillis();
         }
         loops ++;
+        sensorLoops = (sensorLoops + 1) % 5;
 
         long startTimer = System.nanoTime();
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
@@ -261,10 +265,13 @@ public class SampleMecanumDrive {
 
         int numMotorsUpdated = 0;
 
-        if (loops % 100 == 0){
-            //localizer.updateHeading(imu.getAngularOrientation().firstAngle);
+        long imuTime = 0;
+        if (startImuTime - System.currentTimeMillis() >= 60 && ((Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5) || startImuTime - System.currentTimeMillis() >= 200)){
+            startTimer = System.nanoTime();
+            localizer.updateHeading(imu.getAngularOrientation().firstAngle);
+            imuTime = System.nanoTime() - startTimer;
         }
-        else if (loops % 5 == 0) {
+        else if (sensorLoops % 5 == 0) {
             startTimer = System.nanoTime();
             updateHub2();
             hub2Time = System.nanoTime() - startTimer;
@@ -306,11 +313,22 @@ public class SampleMecanumDrive {
                     numMotorsUpdated --;
                 }
             }
-
+            if (numMotorsUpdated == 0){
+                sensorLoops = 0;
+                startTimer = System.nanoTime();
+                updateHub2();
+                hub2Time = System.nanoTime() - startTimer;
+                startTimer = System.nanoTime();
+                updateIntake();
+                updateSlides();
+                updateTurretHeading();
+                updateSlidesLength();
+                updateMech = System.nanoTime() - startTimer;
+            }
             motorTime = System.nanoTime() - startTimer;
         }
 
-        Log.e("timeData", hub1Time + "," + motorTime + "," + numMotorsUpdated + "," + hub2Time + "," + updateMech);
+        Log.e("timeData", hub1Time + "," + motorTime + "," + numMotorsUpdated + "," + hub2Time + "," + updateMech + "," + imuTime);
 
         updateHub2 = false;
         loopStart = System.nanoTime();
