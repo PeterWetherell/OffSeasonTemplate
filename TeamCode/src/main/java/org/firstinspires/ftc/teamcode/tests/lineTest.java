@@ -30,20 +30,12 @@ public class lineTest extends LinearOpMode {
             Trajectory trajectory1 = new Trajectory(new Pose2d(0,-12,0,0.2), true)
                     .addLine(new Pose2d(60,-12,0,0,18,1))
                     .end();
-            while (opModeIsActive() && trajectory1.points.size() >= 1){
-                drive.target = trajectory1.points.get(0);
-                drive.update();
-                drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
-            }
+            drive.followTrajectory(this,trajectory1);
             waitMillis(2000);
             Trajectory trajectory2 = new Trajectory(new Pose2d(60,-12,0,0.2), true)
                     .addLine(new Pose2d(0,-12,0,Math.toRadians(180),18,1))
                     .end();
-            while (opModeIsActive() && trajectory2.points.size() >= 1){
-                drive.target = trajectory2.points.get(0);
-                drive.update();
-                drive.pinMotorPowers(trajectory2.update(drive.currentPose, drive.relCurrentVel));
-            }
+            drive.followTrajectory(this,trajectory1);
             waitMillis(2000);
         }
     }

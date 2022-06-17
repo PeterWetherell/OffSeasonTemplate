@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
 import java.util.ArrayList;
@@ -10,9 +11,6 @@ public class Localizer {
     public double x = 0;
     public double y = 0;
     double heading = 0;
-    double odoHeading = 0;
-    double headingOffset = 0;
-    double startingHeading = 0;
     Pose2d currentPose = new Pose2d(0,0,0);
     Pose2d currentVel = new Pose2d(0,0,0);
     Pose2d relCurrentVel = new Pose2d(0,0,0);
@@ -28,7 +26,7 @@ public class Localizer {
     public void setPose(double x, double y, double h){
         this.x = x;
         this.y = y;
-        this.startingHeading += h - this.heading;
+        this.heading += h - this.heading;
     }
 
     Pose2d lastUpdatePose = new Pose2d(0,0);
@@ -39,14 +37,14 @@ public class Localizer {
         }
         double deltaX = x - lastUpdatePose.x;
         double deltaY = y - lastUpdatePose.y;
-        double headingError = (h - odoHeading);
+        double headingError = (h - heading);
         while (headingError >= Math.PI){
             headingError -= Math.PI * 2;
         }
         while (headingError <= -Math.PI){
             headingError += Math.PI * 2;
         }
-        this.headingOffset += headingError;
+        this.heading += headingError;
 
         x += deltaX * Math.cos(headingError) - deltaY * Math.sin(headingError);
         y += deltaY * Math.cos(headingError) + deltaX * Math.sin(headingError);
@@ -54,13 +52,15 @@ public class Localizer {
         lastUpdatePose = new Pose2d(x,y);
     }
 
+    BNO055IMU imu;
+    public void getIMU(BNO055IMU imu){
+        this.imu = imu;
+    }
     public Localizer(){
         encoders = new Encoder[3];
         encoders[0] = new Encoder(new Pose2d(0.125,-4.119918272),1.013856046);
         encoders[1] = new Encoder(new Pose2d(0.125,5.314013086),  -1.013856046);
-        encoders[2] = new Encoder(new Pose2d(0.125,3),  -1.002930355);//6.2232,3,1
-
-        currentPose = new Pose2d(0,0,0);
+        encoders[2] = new Encoder(new Pose2d(2,0.125),  -1.002930355);//6.2232,3,1
     }
     public void updateEncoders(int[] encoders){
         for (int i = 0; i < this.encoders.length; i ++){
@@ -74,13 +74,13 @@ public class Localizer {
             double a = 6.75 + (val - valTouchIn)/(valTouchOut - valTouchIn) * 0.5;
             //5.0 represents the distance forward/back from center of robot
             //6.75 represents the base and then the equation is being used to determine its actual full extent for left/right.
-            double sensorX = Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
-            double sensorY = Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
-            if (Math.abs(x + sensorX) >= 68){
-                //x = 72 * Math.signum(sensorX + x) - sensorX;
+            double sensorX = x + Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
+            double sensorY = y + Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
+            if (Math.abs(sensorX) >= 68){
+                x += (72 * Math.signum(sensorX) - sensorX) * 0.1;
             }
-            if (Math.abs(y + sensorY) >= 68){
-                //y = 72 * Math.signum(sensorY + y) - sensorY;
+            if (Math.abs(sensorY) >= 68){
+                y += (72 * Math.signum(sensorY) - sensorY) * 0.1;
             }
         }
     }
@@ -165,8 +165,8 @@ public class Localizer {
         leftSensor = new Pose2d(leftSensorX,leftSensorY);
         rightSensor = new Pose2d(rightSensorX,rightSensorY);
 
-        //x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
-        //y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
+        x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
+        y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
     }
     public void update(){
         ramWallUpdate();
@@ -181,22 +181,37 @@ public class Localizer {
 
         //This is the heading because the heading is proportional to the difference between the left and right wheel.
         double deltaHeading = (deltaRight - deltaLeft)/Math.abs(encoders[1].y-encoders[0].y);
-        odoHeading = (encoders[0].getCurrentDist() - encoders[1].getCurrentDist())/(Math.abs(encoders[1].y-encoders[0].y));
-        heading = odoHeading + headingOffset + startingHeading;
+        heading += deltaHeading; //(encoders[0].getCurrentDist() - encoders[1].getCurrentDist())/(Math.abs(encoders[1].y-encoders[0].y));
         //This gives us deltaY because the back minus theta*R is the amount moved to the left minus the amount of movement in the back encoder due to change in heading
         double relDeltaY = deltaBack - deltaHeading*encoders[2].x;
         //This is a weighted average for the amount moved forward with the weights being how far away the other one is from the center
         double relDeltaX = (deltaLeft*encoders[0].y - deltaRight*encoders[1].y)/(encoders[0].y-encoders[1].y);
 
-        double[] delta = getDeltas(relDeltaX, relDeltaY, deltaHeading, heading);
-        x += delta[0];
-        y += delta[1];
+        relHistory.add(0,new Pose2d(relDeltaX,relDeltaY,deltaHeading));
+
+        if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
+            double r1 = relDeltaX / deltaHeading;
+            double r2 = relDeltaY / deltaHeading;
+            relDeltaX = Math.sin(deltaHeading) * r1 + (1.0 - Math.cos(deltaHeading)) * r2;
+            relDeltaY = (1.0 - Math.cos(deltaHeading)) * r1 + Math.sin(deltaHeading) * r2;
+        }
+        double lastHeading = heading-deltaHeading;
+        x += relDeltaX * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
+        y += relDeltaY * Math.cos(lastHeading) + relDeltaX * Math.sin(lastHeading);
+
         currentPose = new Pose2d(x, y, heading);
 
         loopTimes.add(0,loopTime);
-        relHistory.add(0,new Pose2d(relDeltaX,relDeltaY,deltaHeading));
         poseHistory.add(0,currentPose);
         updateVelocity();
+        updateStrafeHeading();
+    }
+    long lastIMUCall = System.currentTimeMillis();
+    public void updateStrafeHeading(){
+        if (Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5){
+            lastIMUCall = System.currentTimeMillis();
+            //imu.getAngularOrientation().firstAngle;
+        }
     }
     public void updatePowerVector(double[] p){
         for (int i = 0; i < p.length; i ++){
@@ -226,32 +241,19 @@ public class Localizer {
             }
         }
         currentVel = new Pose2d(
-                (poseHistory.get(lastIndex).getX() - poseHistory.get(0).getX()) / actualVelTime,
-                (poseHistory.get(lastIndex).getY() - poseHistory.get(0).getY()) / actualVelTime,
-                (poseHistory.get(lastIndex).getHeading() - poseHistory.get(0).getHeading()) / actualVelTime
+                (poseHistory.get(0).getX() - poseHistory.get(lastIndex).getX()) / actualVelTime,
+                (poseHistory.get(0).getY() - poseHistory.get(lastIndex).getY()) / actualVelTime,
+                (poseHistory.get(0).getHeading() - poseHistory.get(lastIndex).getHeading()) / actualVelTime
         );
         relCurrentVel = new Pose2d(
                 (relDeltaXTotal) / actualVelTime,
                 (relDeltaYTotal) / actualVelTime,
-                (poseHistory.get(lastIndex).getHeading() - poseHistory.get(0).getHeading()) / actualVelTime
+                (poseHistory.get(0).getHeading() - poseHistory.get(lastIndex).getHeading()) / actualVelTime
         );
         while (lastIndex + 1 < loopTimes.size()){
             loopTimes.remove(loopTimes.size() - 1);
             relHistory.remove(relHistory.size() - 1);
             poseHistory.remove(poseHistory.size() - 1);
         }
-    }
-    public double[] getDeltas(double relDeltaX, double relDeltaY, double deltaHeading, double heading){
-        if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
-            double r1 = relDeltaX / deltaHeading;
-            double r2 = relDeltaY / deltaHeading;
-            relDeltaX = Math.sin(deltaHeading) * r1 + (1.0-Math.cos(deltaHeading)) * r2;
-            relDeltaY = (1.0 - Math.cos(deltaHeading)) * r1 + Math.sin(deltaHeading) * r2;
-        }
-        double lastHeading = heading-deltaHeading;
-        double[] delta = new double[2];
-        delta[0] = relDeltaX * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
-        delta[1] = relDeltaY * Math.cos(lastHeading) + relDeltaX * Math.sin(lastHeading);
-        return delta;
     }
 }

@@ -32,11 +32,7 @@ public class movementTest extends LinearOpMode {
                 .addLine(new Pose2d(0,48,0,0,24,1))
                 .addLine(new Pose2d(0,0,0,0,24,1))
                 .end();
-        while (opModeIsActive() && trajectory1.points.size() >= 1){
-            drive.target = trajectory1.points.get(0);
-            drive.update();
-            drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
-        }
+        drive.followTrajectory(this,trajectory1);
         waitMillis(2000);
     }
     public void waitMillis(long time){

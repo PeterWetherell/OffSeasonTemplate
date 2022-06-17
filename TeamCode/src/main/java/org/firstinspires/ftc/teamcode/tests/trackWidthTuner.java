@@ -54,8 +54,8 @@ public class trackWidthTuner extends LinearOpMode {
 
             telemetry.addData("Cumulative Angle",Math.toDegrees(currentCumAngle));
             telemetry.addData("Track Width",trackWidth);
-            telemetry.addData("Right Odo Y",(-1 * trackWidth * right / (right - left)) + " " + (-1 * right / currentCumAngle));
-            telemetry.addData("Left Odo Y",(-1 * trackWidth * left / (right - left)) + " " + (-1 * left / currentCumAngle));
+            telemetry.addData("Right Odo Y",(-1 * right / currentCumAngle));
+            telemetry.addData("Left Odo Y", (-1 * left / currentCumAngle));
             telemetry.addData("Back Odo X",back/currentCumAngle);
             telemetry.addData("Right",right);
             telemetry.addData("Left",left);

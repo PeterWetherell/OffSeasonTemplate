@@ -7,6 +7,7 @@ import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorSensor;
@@ -38,17 +39,6 @@ public class SampleMecanumDrive {
     public AnalogInput rightIntake, leftIntake, depositSensor, distLeft, distRight, magLeft, magRight, flex;
     public VoltageSensor batteryVoltageSensor;
     public BNO055IMU imu;
-
-    int[] encoders;
-
-    double currentSlideLength = 0;
-    double currentSlideSpeed = 0;
-    double currentTurretAngle = 0;
-    double currentIntakeSpeed = 0;
-
-    int rightIntakeVal = 0, leftIntakeVal = 0, depositVal = 0, flexSensorVal = 0;
-    double distValLeft = 0, distValRight = 0;int magValLeft = 0, magValRight = 0;
-    double lastDistValLeft = 0, lastDistValRight = 0;
 
     double targetSlidesPose = 3, slidesSpeed = 1, slidesI = 0;
     double targetTurretPose = 0, turretI = 0;
@@ -161,7 +151,7 @@ public class SampleMecanumDrive {
         motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2);
 
         for (int i = 0; i < 4; i ++) {
-            motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             motorPriorities.add(new UpdatePriority(3,5));
         }
         motorPriorities.add(new UpdatePriority(1,2));
@@ -221,6 +211,7 @@ public class SampleMecanumDrive {
         initMotors(hardwareMap);
         initSensors(hardwareMap);
         localizer = new Localizer();
+        localizer.getIMU(imu);
         transferMineral = false;
         r = new robotComponents(true);
         dashboard = FtcDashboard.getInstance();
@@ -242,93 +233,54 @@ public class SampleMecanumDrive {
     }
     int loops = 0;
     int sensorLoops = 0;
-    long startImuTime = System.currentTimeMillis();
+    int numMotorsUpdated = 0;
     public void update(){
         if (loops == 0){
             start = System.nanoTime();
             loopStart = System.nanoTime();
-            startImuTime = System.currentTimeMillis();
         }
         loops ++;
-        sensorLoops = (sensorLoops + 1) % 5;
-
-        long startTimer = System.nanoTime();
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
-        long hub1Time = System.nanoTime() - startTimer;
-        long hub2Time = 0;
-        long updateMech = 0;
-        long motorTime = 0;
 
         loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
         TelemetryPacket packet = new TelemetryPacket();
         packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
 
-        int numMotorsUpdated = 0;
-
-        long imuTime = 0;
-        if (startImuTime - System.currentTimeMillis() >= 60 && ((Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5) || startImuTime - System.currentTimeMillis() >= 200)){
-            startTimer = System.nanoTime();
-            localizer.updateHeading(imu.getAngularOrientation().firstAngle);
-            imuTime = System.nanoTime() - startTimer;
-        }
-        else if (sensorLoops % 5 == 0) {
-            startTimer = System.nanoTime();
+        if (numMotorsUpdated == 0 || sensorLoops >= 4){
+            sensorLoops = 0;
             updateHub2();
-            hub2Time = System.nanoTime() - startTimer;
-            startTimer = System.nanoTime();
             updateIntake();
             updateSlides();
             updateTurretHeading();
             updateSlidesLength();
-            updateMech = System.nanoTime() - startTimer;
         }
         else {
-            loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
+            sensorLoops ++;
+        }
 
-            packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
-
-            double targetLoopLength = 0.005; //Sets the target loop time in seconds
-            double a = 1;
-
-            startTimer = System.nanoTime();
-
-            while (a > 0 && loopTime <= targetLoopLength && numMotorsUpdated < 2) { // updates the motors while still time remaining in the loop
-                numMotorsUpdated++;
-                int bestIndex = 0;
-                double bestScore = motorPriorities.get(0).getPriority();
-                for (int i = 1; i < motorPriorities.size(); i++) { //finding the motor that is most in need of being updated;
-                    if (motorPriorities.get(i).getPriority() > bestScore) {
-                        bestIndex = i;
-                        bestScore = motorPriorities.get(i).getPriority();
-                    }
+        double targetLoopLength = 0.004; //Sets the target loop time in seconds
+        double bestMotorUpdate = 1;
+        numMotorsUpdated = 0;
+        while (sensorLoops != 0 && bestMotorUpdate > 0 && loopTime <= targetLoopLength) { // updates the motors while still time remaining in the loop
+            int bestIndex = 0;
+            bestMotorUpdate = motorPriorities.get(0).getPriority();
+            for (int i = 1; i < motorPriorities.size(); i++) { //finding the motor that is most in need of being updated;
+                if (motorPriorities.get(i).getPriority() > bestMotorUpdate) {
+                    bestIndex = i;
+                    bestMotorUpdate = motorPriorities.get(i).getPriority();
                 }
+            }
+            if (bestMotorUpdate != 0) {
+                numMotorsUpdated++;
                 motors.get(bestIndex).setPower(motorPriorities.get(bestIndex).power); //setting the motor of the one that most needs it
                 if (bestIndex == motorPriorities.size() - 1) {
+                    numMotorsUpdated++;
                     slides2.setPower(motorPriorities.get(bestIndex).power); //This deals with the case of the linked mechanism for the slides. If one gets chosen the other must also be chosen
                 }
                 motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor
-                loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
-                a = bestScore; //Checking to make sure a motor was updated because if it wasn't then can move onto next thing
-                if (a == 0){
-                    numMotorsUpdated --;
-                }
             }
-            if (numMotorsUpdated == 0){
-                sensorLoops = 0;
-                startTimer = System.nanoTime();
-                updateHub2();
-                hub2Time = System.nanoTime() - startTimer;
-                startTimer = System.nanoTime();
-                updateIntake();
-                updateSlides();
-                updateTurretHeading();
-                updateSlidesLength();
-                updateMech = System.nanoTime() - startTimer;
-            }
-            motorTime = System.nanoTime() - startTimer;
+            loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
         }
-
-        Log.e("timeData", hub1Time + "," + motorTime + "," + numMotorsUpdated + "," + hub2Time + "," + updateMech + "," + imuTime);
 
         updateHub2 = false;
         loopStart = System.nanoTime();
@@ -380,7 +332,6 @@ public class SampleMecanumDrive {
         fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
         dashboard.sendTelemetryPacket(packet);
     }
-
     public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
         for (Component c : r.components){
             fieldOverlay.setStrokeWidth(c.lineRadius);
@@ -396,7 +347,6 @@ public class SampleMecanumDrive {
             }
         }
     }
-
     public void drawLine(Canvas c, Point p, Point p2, Pose2d pose){
         double x1 = Math.cos(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) - Math.sin(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + pose.getX();
         double y1 = Math.cos(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + Math.sin(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) + pose.getY();
@@ -404,7 +354,6 @@ public class SampleMecanumDrive {
         double y2 = Math.cos(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + Math.sin(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) + pose.getY();
         c.strokeLine(x1,y1,x2,y2);
     }
-
     public void drawPoint(Canvas c, Point p, double radius, Pose2d pose){
         if (radius != 0){
             double x = Math.cos(pose.getHeading())*p.x - Math.sin(pose.getHeading())*p.y + pose.getX();
@@ -412,6 +361,10 @@ public class SampleMecanumDrive {
             c.strokeCircle(x,y,radius);
         }
     }
+
+    int rightIntakeVal = 0, leftIntakeVal = 0, depositVal = 0, flexSensorVal = 0;
+    int[] encoders;
+    double currentIntakeSpeed = 0;
 
     public void getEncoders(){
         bulkData = expansionHub1.getBulkInputData();
@@ -482,10 +435,15 @@ public class SampleMecanumDrive {
             }
         }
     }
+    double currentSlideLength = 0;
+    double currentSlideSpeed = 0;
+    double currentTurretAngle = 0;
+    double distValLeft = 0, distValRight = 0;int magValLeft = 0, magValRight = 0;
+    double lastDistValLeft = 0, lastDistValRight = 0;
     public void updateHub2(){
         if (!updateHub2) {
             updateHub2 = true;
-            RevBulkData bulkData = expansionHub2.getBulkInputData();
+            bulkData = expansionHub2.getBulkInputData();
             if (bulkData != null) {
                 try {
                     currentSlideLength = bulkData.getMotorCurrentPosition(slides2) / 25.1372713591;
@@ -889,6 +847,73 @@ public class SampleMecanumDrive {
         leftBack.setPower(v1);
         rightBack.setPower(v2);
         rightFront.setPower(v3);
+    }
+
+    public void driveToPoint(LinearOpMode opMode, Pose2d targetPoint){
+        double error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
+        while (opMode.opModeIsActive() && error > 3){
+            update();
+            error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
+            double targetAngle = Math.atan2(targetPoint.y - currentPose.y,targetPoint.x - currentPose.x);
+            double headingError = targetAngle - currentPose.heading;
+            while (Math.abs(headingError) > Math.PI){
+                headingError -= Math.PI * 2 * Math.signum(headingError);
+            }
+            double relErrorX = Math.cos(headingError) * error;
+            double relErrorY = Math.sin(headingError) * error;
+            double t = Math.toDegrees(headingError) * 0.3/15;
+            double f = (relErrorX/error) * 0.5/(1.0-Math.abs(t));
+            double l = (relErrorY/error) * 0.5/(1.0-Math.abs(t));
+            pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
+        }
+    }
+
+    long lastLoop;
+    public static double headingP = 1, headingI = 0, headingD = 0, headingInt = 0;
+    public static double velXP = 1, velXI = 0, velXD = 0, velXInt = 0;
+    public static double velYP = 1, velYI = 0, velYD = 0, velYInt = 0;
+
+    public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
+
+        Pose2d targetPoint = trajectory.points.get(0);
+        double error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
+        lastLoop = System.nanoTime();
+
+        while (opMode.opModeIsActive() && error > 3){
+
+            long currentTime = System.nanoTime();
+            double loopTime = (lastLoop-currentTime)/1000000000.0;
+            lastLoop = currentTime;
+
+            update();
+            trajectory.update(currentPose,relCurrentVel);
+            targetPoint = trajectory.points.get(0);
+            error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
+
+            Pose2d lastTargetPoint = trajectory.points.get(trajectory.points.size()-1);
+            double finalError = Math.sqrt(Math.pow(currentPose.x - lastTargetPoint.x,2) + Math.pow(currentPose.y - lastTargetPoint.y,2));
+
+            double targetAngle = Math.atan2(targetPoint.y - currentPose.y,targetPoint.x - currentPose.x);
+            double headingError = targetAngle - currentPose.heading;
+            while (Math.abs(headingError) > Math.PI){
+                headingError -= Math.PI * 2 * Math.signum(headingError);
+            }
+            double relErrorX = Math.cos(headingError) * error;
+            double relErrorY = Math.sin(headingError) * error;
+
+            if (finalError <= 8){
+                headingError = lastTargetPoint.heading - currentPose.heading;
+                while (Math.abs(headingError) > Math.PI){
+                    headingError -= Math.PI * 2 * Math.signum(headingError);
+                }
+            }
+            double t = Math.toDegrees(headingError) * 0.3/15;
+
+            double f = (relErrorX/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t));
+            double l = (relErrorY/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t));
+            pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
+        }
+        pinMotorPowers(0,0,0,0);
     }
 
 

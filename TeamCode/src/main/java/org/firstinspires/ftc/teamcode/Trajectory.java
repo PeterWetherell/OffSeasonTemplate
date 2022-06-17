@@ -69,12 +69,7 @@ public class Trajectory {
         return Math.sqrt(Math.pow(currentPose.x - points.get(0).x,2) + Math.pow(currentPose.y - points.get(0).y,2));
     }
 
-    double lastError = 100;
-    double lastTurnError = 100;
-    boolean errorIncreasing = false;
-    double velI = 0;
-
-    public double[] update(Pose2d currentPose, Pose2d relCurrentVel){
+    public void update(Pose2d currentPose, Pose2d relCurrentVel){
         double vel = Math.sqrt(Math.pow(relCurrentVel.x, 2) + Math.pow(relCurrentVel.y, 2));
         while (points.size() > 1 && Math.sqrt(Math.pow(currentPose.x - points.get(0).x, 2) + Math.pow(currentPose.y - points.get(0).y, 2)) <= points.get(0).radius) {
             points.remove(0);
@@ -91,57 +86,5 @@ public class Trajectory {
                 }
             }
         }
-
-        if(points.size() == 0){
-            return new double[]{0,0,0,0};
-        }
-        double targetAngle = Math.atan2(points.get(0).y - currentPose.y,points.get(0).x - currentPose.x);
-        double error = Math.sqrt(Math.pow(currentPose.x - points.get(0).x,2) + Math.pow(currentPose.y - points.get(0).y,2));
-        double errorHeading = targetAngle - currentPose.getHeading();
-        while (errorHeading >= Math.PI){
-            errorHeading -= 2 * Math.PI;
-        }
-        while (errorHeading <= -Math.PI){
-            errorHeading += 2 * Math.PI;
-        }
-
-        double relErrorX = error * Math.cos(errorHeading);
-        double relErrorY = error * Math.sin(errorHeading) * 1.55;
-
-        double turn = errorHeading + points.get(0).headingOffset;
-
-        if (points.size() == 1) {
-            if (error > lastError || error < 3 || Math.abs(errorHeading) > Math.abs(lastTurnError) || Math.toDegrees(Math.abs(errorHeading)) <= 15) {
-                errorIncreasing = true;
-            }
-            lastError = error;
-            lastTurnError = errorHeading;
-            if (errorIncreasing) {
-                turn = (points.get(0).heading - currentPose.getHeading()) + points.get(0).headingOffset;
-            }
-
-            double velError = points.get(0).speed - vel/54.0;
-            velI += velError * 0.008 * 0.2;
-            velI = Math.min(Math.max(velI,0),1);
-
-        }
-        while (turn >= Math.PI){
-            turn -= 2 * Math.PI;
-        }
-        while (turn <= -Math.PI){
-            turn += 2 * Math.PI;
-        }
-        double h = Math.max(Math.abs(Math.toDegrees(turn)/55.0), 0.25) * Math.signum(turn);
-        if (Math.abs(turn) <= Math.toRadians(5)){
-            h = 0;
-        }
-
-        double a = velI + points.get(0).speed;
-
-        final double v = Math.abs(relErrorX) + Math.abs(relErrorY);
-        double velX = (a * relErrorX / v) * (1 - h);
-        double velY = (a * relErrorY / v) * (1 - h);
-
-        return new double[]{velX-velY-h,velX+velY-h,velX-velY+h,velX+velY+h};
     }
 }
