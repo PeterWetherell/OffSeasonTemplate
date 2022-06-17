@@ -27,23 +27,9 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SampleMecanumDrive {
-    RevBulkData bulkData;
-
-    ExpansionHubEx expansionHub1, expansionHub2;
-    public List<ExpansionHubMotor> motors;
-    public ExpansionHubMotor leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2;
-
-    public ArrayList<Servo> servos;
-    public CRServo duckSpin, duckSpin2;
-
-    public AnalogInput rightIntake, leftIntake, depositSensor, distLeft, distRight, magLeft, magRight, flex;
-    public VoltageSensor batteryVoltageSensor;
-    public BNO055IMU imu;
 
     double targetSlidesPose = 3, slidesSpeed = 1, slidesI = 0;
     double targetTurretPose = 0, turretI = 0;
-
-    boolean updateHub2 = false;
 
     boolean startSlides = false;
     boolean startIntake = false;
@@ -52,80 +38,18 @@ public class SampleMecanumDrive {
     double loopTime = 0.0;
     private long start = System.nanoTime();
 
-    public boolean transferMineral;
-    public double currentIntake = 0;
     long currentTime = System.currentTimeMillis();
     long slideStart = currentTime, slideTime = currentTime, intakeTime = currentTime, startIntakeDepositTransfer = currentTime, startIntakeHit;
     long slidesDelay = currentTime, intakeDelay = currentTime, depositDelay = currentTime;
-    public int intakeCase = 0, lastIntakeCase = 0;
-    public int slidesCase = 0, lastSlidesCase = 0;
-    boolean firstSlide = false;
-    public int dropIntakeTime = 380;
-    public double intakePower = -1;
-    public int liftIntakeTime = 700;
-    public int transfer1Time = 215;
-    public int transfer2Time = 235;
-    public double transfer1Power = 1.0;
-    public int openDepositTime = 250;
-    public int intakeLiftDelay = 100;
-    public int effectiveDepositTime = openDepositTime;
-    public double returnSlideLength = 0.35;
-    long transferTime = System.currentTimeMillis();
-
-    public static int intakeMinValRight = 200;
-    public static int intakeMinValLeft = 100;
-    public int numZeroLeft = 0;
-    public int numZeroRight = 0;
-    int numRightIntake = 0;
-    int numLeftIntake = 0;
-
-    double intakeTurretInterfaceHeading = Math.toRadians(57.5);
-    public static double v4barInterfaceAngle = 0.15;
-    public double depositAngle = Math.toRadians(-45);
-    public double effectiveDepositAngle = Math.toRadians(-45);
-    public static double depositInterfaceAngle = 0.8;
-    public double depositTransferAngle = Math.toRadians(135);
-    public double targetSlideExtensionLength = 0;
-    public double targetTurretHeading = 0;
-    public double targetV4barOrientation = 0;
-
-    public boolean intakeDepositTransfer = false, intakeHit = false;
-
-    public double leftIntakeDrop = 0.088;
-    public double leftIntakeRaise = 0.79;
-    public double leftIntakeMid = 0.721;
-    public double rightIntakeDrop = 0.948;
-    public double rightIntakeRaise = 0.279;
-    public double rightIntakeMid = 0.356;
-
-    double currentV4barAngle = 0;
-    double targetV4barAngle = 0;
-    double targetDepositAngle = 0;
-
-    boolean deposit = false;
-
-    public double turretOffset = 0;
-    public double slidesOffset = 0;
-    public double v4barOffset = 0;
-
-    double currentDepositAngle = depositInterfaceAngle;
-
-    public ArrayList<UpdatePriority> motorPriorities = new ArrayList<>();
-
-    public Localizer localizer;
-
-    public Pose2d currentPose = new Pose2d(0,0,0);
-    public Pose2d currentVel = new Pose2d(0,0,0);
-    public Pose2d relCurrentVel = new Pose2d(0,0,0);
-
-    public Pose2d target = null;
-
-    robotComponents r;
-    private final FtcDashboard dashboard;
 
     public void setPose(double x, double y, double h) {
         localizer.setPose(x,y,h);
     }
+
+    ExpansionHubEx expansionHub1, expansionHub2;
+    public List<ExpansionHubMotor> motors;
+    public ExpansionHubMotor leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2;
+    public ArrayList<UpdatePriority> motorPriorities = new ArrayList<>();
     public void initMotors(HardwareMap hardwareMap){
         expansionHub1 = hardwareMap.get(ExpansionHubEx.class, "Expansion Hub 1");
         leftFront = (ExpansionHubMotor) hardwareMap.dcMotor.get("lf");
@@ -164,6 +88,9 @@ public class SampleMecanumDrive {
         rightBack.setMode(runMode);
         rightFront.setMode(runMode);
     }
+
+    public ArrayList<Servo> servos;
+    public CRServo duckSpin, duckSpin2;
     public void initServos(HardwareMap hardwareMap){
         servos = new ArrayList<>();
         for (int i = 0; i < 12; i ++) {
@@ -183,6 +110,10 @@ public class SampleMecanumDrive {
         duckSpin = hardwareMap.crservo.get("duckSpin");
         duckSpin2 = hardwareMap.crservo.get("duckSpin2");
     }
+
+    public AnalogInput rightIntake, leftIntake, depositSensor, distLeft, distRight, magLeft, magRight, flex;
+    public VoltageSensor batteryVoltageSensor;
+    public BNO055IMU imu;
     private void initSensors(HardwareMap hardwareMap){
         rightIntake = hardwareMap.analogInput.get("rightIntake");
         leftIntake = hardwareMap.analogInput.get("leftIntake");
@@ -205,6 +136,10 @@ public class SampleMecanumDrive {
         imu.initialize(parameters);
 
     }
+
+    public Localizer localizer;
+    robotComponents r;
+    private final FtcDashboard dashboard;
     public SampleMecanumDrive(HardwareMap hardwareMap){
         encoders = new int[3];
         initServos(hardwareMap);
@@ -212,7 +147,6 @@ public class SampleMecanumDrive {
         initSensors(hardwareMap);
         localizer = new Localizer();
         localizer.getIMU(imu);
-        transferMineral = false;
         r = new robotComponents(true);
         dashboard = FtcDashboard.getInstance();
         dashboard.setTelemetryTransmissionInterval(25);
@@ -234,6 +168,8 @@ public class SampleMecanumDrive {
     int loops = 0;
     int sensorLoops = 0;
     int numMotorsUpdated = 0;
+    public Pose2d target = null;
+    boolean updateHub2 = false;
     public void update(){
         if (loops == 0){
             start = System.nanoTime();
@@ -365,7 +301,17 @@ public class SampleMecanumDrive {
     int rightIntakeVal = 0, leftIntakeVal = 0, depositVal = 0, flexSensorVal = 0;
     int[] encoders;
     double currentIntakeSpeed = 0;
-
+    RevBulkData bulkData;
+    public Pose2d currentPose = new Pose2d(0,0,0);
+    public Pose2d currentVel = new Pose2d(0,0,0);
+    public Pose2d relCurrentVel = new Pose2d(0,0,0);
+    public static int intakeMinValRight = 200;
+    public static int intakeMinValLeft = 100;
+    public int numZeroLeft = 0;
+    public int numZeroRight = 0;
+    int numRightIntake = 0;
+    int numLeftIntake = 0;
+    public boolean intakeDepositTransfer = false, intakeHit = false;
     public void getEncoders(){
         bulkData = expansionHub1.getBulkInputData();
         if (bulkData != null) {
@@ -467,7 +413,10 @@ public class SampleMecanumDrive {
             }
         }
     }
-
+    public double targetSlideExtensionLength = 0;
+    public double targetTurretHeading = 0;
+    public double targetV4barOrientation = 0;
+    public double depositAngle = Math.toRadians(-45);
     public void startDeposit(Pose2d endPose, Pose2d targetPose, double height, double radius){
         double turretX = -0.75;
         double depositLength = 4.0;
@@ -518,11 +467,33 @@ public class SampleMecanumDrive {
         intakeDelay = System.currentTimeMillis();
     }
 
+    boolean deposit = false;
     public void deposit(){
         deposit = true;
         depositDelay = System.currentTimeMillis();
     }
 
+    public boolean transferMineral = false;
+    public double currentIntake = 0;
+    public int intakeCase = 0, lastIntakeCase = 0;
+    public int dropIntakeTime = 380;
+    public double intakePower = -1;
+    public int liftIntakeTime = 700;
+    public int transfer1Time = 215;
+    public int transfer2Time = 235;
+    public double leftIntakeDrop = 0.088;
+    public double leftIntakeRaise = 0.79;
+    public double leftIntakeMid = 0.721;
+    public double rightIntakeDrop = 0.948;
+    public double rightIntakeRaise = 0.279;
+    public double rightIntakeMid = 0.356;
+    double intakeTurretInterfaceHeading = Math.toRadians(57.5);
+    public static double depositInterfaceAngle = 0.8;
+    public static double v4barInterfaceAngle = 0.15;
+    long transferTime = System.currentTimeMillis();
+    public int intakeLiftDelay = 100;
+    public double transfer1Power = 1.0;
+    public double returnSlideLength = 0.35;
     public void updateIntake(){
 
         if (startIntake && intakeCase == 0){
@@ -615,6 +586,16 @@ public class SampleMecanumDrive {
         }
     }
 
+    public double turretOffset = 0;
+    public double slidesOffset = 0;
+    public double v4barOffset = 0;
+    double currentDepositAngle = depositInterfaceAngle;
+    public double depositTransferAngle = Math.toRadians(135);
+    public double effectiveDepositAngle = Math.toRadians(-45);
+    public int slidesCase = 0, lastSlidesCase = 0;
+    boolean firstSlide = false;
+    public int openDepositTime = 250;
+    public int effectiveDepositTime = openDepositTime;
     public void updateSlides(){
         if (startSlides && slidesCase == 0){
             slidesCase = 1;
@@ -807,6 +788,9 @@ public class SampleMecanumDrive {
         }
     }
 
+    double targetDepositAngle = 0;
+    double currentV4barAngle = 0;
+    double targetV4barAngle = 0;
     public void setV4barDeposit(double targetDepositAngle, double targetV4barOrientation){
         targetV4barAngle = targetV4barOrientation;
         currentV4barAngle = targetV4barOrientation;

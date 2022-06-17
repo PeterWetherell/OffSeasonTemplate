@@ -27,29 +27,9 @@ public class Localizer {
         this.x = x;
         this.y = y;
         this.heading += h - this.heading;
-    }
-
-    Pose2d lastUpdatePose = new Pose2d(0,0);
-    boolean firstUpdate = false;
-    public void updateHeading(double h){
-        if(!firstUpdate){
-            lastUpdatePose = new Pose2d(x,y);
-        }
-        double deltaX = x - lastUpdatePose.x;
-        double deltaY = y - lastUpdatePose.y;
-        double headingError = (h - heading);
-        while (headingError >= Math.PI){
-            headingError -= Math.PI * 2;
-        }
-        while (headingError <= -Math.PI){
-            headingError += Math.PI * 2;
-        }
-        this.heading += headingError;
-
-        x += deltaX * Math.cos(headingError) - deltaY * Math.sin(headingError);
-        y += deltaY * Math.cos(headingError) + deltaX * Math.sin(headingError);
-
-        lastUpdatePose = new Pose2d(x,y);
+        lastIMUCall = System.currentTimeMillis();
+        lastPose = new Pose2d(x,y,h);
+        lastImuHeading = imu.getAngularOrientation().firstAngle;
     }
 
     BNO055IMU imu;
@@ -207,10 +187,25 @@ public class Localizer {
         updateStrafeHeading();
     }
     long lastIMUCall = System.currentTimeMillis();
+    Pose2d lastPose = new Pose2d(0,0,0);
+    double lastImuHeading = imu.getAngularOrientation().firstAngle;
     public void updateStrafeHeading(){
-        if (Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5){
+        //if (Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5){} //check strafing
+        if (System.currentTimeMillis() - lastIMUCall >= 200){
+            double deltaX = x-lastPose.x;
+            double deltaY = y-lastPose.y;
+            double imuHeading = imu.getAngularOrientation().firstAngle;
+            double deltaHeading = (imuHeading - lastImuHeading) - (heading - lastPose.heading);
+            while (Math.abs(deltaHeading) > Math.PI){
+                deltaHeading -= Math.PI * 2 * Math.signum(deltaHeading);
+            }
+            x = lastPose.x + deltaX * Math.cos(deltaHeading) - deltaY * Math.sin(deltaHeading);
+            y = lastPose.y + deltaX * Math.sin(deltaHeading) + deltaY * Math.cos(deltaHeading);
+            heading += deltaHeading;
+
             lastIMUCall = System.currentTimeMillis();
-            //imu.getAngularOrientation().firstAngle;
+            lastPose = new Pose2d(x,y,heading);
+            lastImuHeading = imuHeading;
         }
     }
     public void updatePowerVector(double[] p){
