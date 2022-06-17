@@ -853,17 +853,16 @@ public class SampleMecanumDrive {
     }
 
     long lastLoop;
-    public static double headingP = 1, headingI = 0, headingD = 0, headingInt = 0;
-    public static double velXP = 1, velXI = 0, velXD = 0, velXInt = 0;
-    public static double velYP = 1, velYI = 0, velYD = 0, velYInt = 0;
+    public static double headingP = 1.145916, headingI = 0, headingInt = 0;
+    public static double velXP = 1, velXI = 0, velXInt = 0;
+    public static double velYP = 1, velYI = 0, velYInt = 0;
 
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
 
         Pose2d targetPoint = trajectory.points.get(0);
-        double error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
         lastLoop = System.nanoTime();
 
-        while (opMode.opModeIsActive() && error > 3){
+        while (opMode.opModeIsActive() && trajectory.points.size() != 0){
 
             long currentTime = System.nanoTime();
             double loopTime = (lastLoop-currentTime)/1000000000.0;
@@ -872,7 +871,7 @@ public class SampleMecanumDrive {
             update();
             trajectory.update(currentPose,relCurrentVel);
             targetPoint = trajectory.points.get(0);
-            error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
+            double error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
 
             Pose2d lastTargetPoint = trajectory.points.get(trajectory.points.size()-1);
             double finalError = Math.sqrt(Math.pow(currentPose.x - lastTargetPoint.x,2) + Math.pow(currentPose.y - lastTargetPoint.y,2));
@@ -891,10 +890,18 @@ public class SampleMecanumDrive {
                     headingError -= Math.PI * 2 * Math.signum(headingError);
                 }
             }
-            double t = Math.toDegrees(headingError) * 0.3/15;
+            headingInt += headingError * loopTime;
+            double t = headingError * headingP + headingInt * headingI;
 
-            double f = (relErrorX/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t));
-            double l = (relErrorY/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t));
+            double targetF = (relErrorX/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t)) * 45.0;
+            double errorF = targetF - relCurrentVel.x;
+            velXInt += errorF * loopTime;
+            double f = errorF * velXP + velXInt * velXI;
+
+            double targetL = (relErrorY/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t)) * 45.0;
+            double errorL = targetL - relCurrentVel.y;
+            velYInt += errorL * loopTime;
+            double l = errorL * velYP + velYInt * velYI;
             pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
         }
         pinMotorPowers(0,0,0,0);
