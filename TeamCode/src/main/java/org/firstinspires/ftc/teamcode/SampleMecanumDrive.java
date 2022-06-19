@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Config
 public class SampleMecanumDrive {
 
     double targetSlidesPose = 3, slidesSpeed = 1, slidesI = 0;
@@ -859,7 +861,7 @@ public class SampleMecanumDrive {
 
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
 
-        Pose2d targetPoint = trajectory.points.get(0);
+        Pose2d targetPoint;
         lastLoop = System.nanoTime();
 
         while (opMode.opModeIsActive() && trajectory.points.size() != 0){
@@ -878,18 +880,16 @@ public class SampleMecanumDrive {
 
             double targetAngle = Math.atan2(targetPoint.y - currentPose.y,targetPoint.x - currentPose.x);
             double headingError = targetAngle - currentPose.heading;
-            while (Math.abs(headingError) > Math.PI){
-                headingError -= Math.PI * 2 * Math.signum(headingError);
-            }
             double relErrorX = Math.cos(headingError) * error;
             double relErrorY = Math.sin(headingError) * error;
 
-            if (finalError <= 8){
+            if (finalError <= 8 && trajectory.points.size() < 100){
                 headingError = lastTargetPoint.heading - currentPose.heading;
-                while (Math.abs(headingError) > Math.PI){
-                    headingError -= Math.PI * 2 * Math.signum(headingError);
-                }
             }
+            while (Math.abs(headingError) > Math.PI){
+                headingError -= Math.PI * 2 * Math.signum(headingError);
+            }
+
             headingInt += headingError * loopTime;
             double t = headingError * headingP + headingInt * headingI;
 
