@@ -10,6 +10,8 @@ public class Localizer {
     long lastTime = System.nanoTime();
     public double x = 0;
     public double y = 0;
+    public double xButNeg = 0;
+    public double yButNeg = 0;
     double heading = 0;
     Pose2d currentPose = new Pose2d(0,0,0);
     Pose2d currentVel = new Pose2d(0,0,0);
@@ -47,6 +49,7 @@ public class Localizer {
             this.encoders[i].update(encoders[i]);
         }
     }
+    int numWallUpdate = 0;
     public void wallUpdate(double val){
         double valTouchIn = 100;
         double valTouchOut = 380;
@@ -57,10 +60,19 @@ public class Localizer {
             double sensorX = x + Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
             double sensorY = y + Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
             if (Math.abs(sensorX) >= 68){
-                x += (72 * Math.signum(sensorX) - sensorX) * 0.1;
+                numWallUpdate = Math.min(numWallUpdate + 1, 10);
+                if (numWallUpdate == 10) {
+                    x += (72 * Math.signum(sensorX) - sensorX) * 0.1;
+                }
             }
-            if (Math.abs(sensorY) >= 68){
-                y += (72 * Math.signum(sensorY) - sensorY) * 0.1;
+            else if (Math.abs(sensorY) >= 68){
+                numWallUpdate = Math.min(numWallUpdate + 1, 10);
+                if (numWallUpdate == 10) {
+                    y += (72 * Math.signum(sensorY) - sensorY) * 0.1;
+                }
+            }
+            else{
+                numWallUpdate = 0;
             }
         }
     }
@@ -98,6 +110,9 @@ public class Localizer {
             }
         }
     }
+    int numDistLeft = 0;
+    int numDistRight = 0;
+    double wallDist = 48.0;
     public void distUpdate(double rightDist, double leftDist){
         double rightSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) * -6.0;
         double rightSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) * -6.0;
@@ -106,38 +121,58 @@ public class Localizer {
 
         double xErrorLeft = 0;
         double yErrorLeft = 0;
-        if (Math.abs(leftSensorY) <= 64 && Math.abs(leftSensorX) <= 64){ //Make sure the sensor itself is not near a wall
+        if (Math.abs(leftSensorY) <= wallDist - 8 && Math.abs(leftSensorX) <= wallDist - 8){ //Make sure the sensor itself is not near a wall
             leftSensorX += Math.cos(heading) * leftDist;
             leftSensorY += Math.sin(heading) * leftDist;
-            if (Math.abs(leftSensorX) >= 72 - 6 ^ Math.abs(leftSensorY) >= 72 - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
-                if (Math.abs(leftSensorX) >= 72 - 6){ //finding out which of the two walls
-                    xErrorLeft = 72 * Math.signum(leftSensorX) - leftSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+            if (Math.abs(leftSensorX) >= wallDist - 6 ^ Math.abs(leftSensorY) >= wallDist - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(leftSensorX) >= wallDist - 6){ //finding out which of the two walls
+                    numDistLeft = Math.min(numDistLeft + 1, 6);
+                    if (numDistLeft == 6) {
+                        xErrorLeft = wallDist * Math.signum(leftSensorX) - leftSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+                    }
                 }
                 else {
-                    yErrorLeft = 72 * Math.signum(leftSensorY) - leftSensorY;
+                    numDistLeft = Math.min(numDistLeft + 1, 6);
+                    if (numDistLeft == 6) {
+                        yErrorLeft = wallDist * Math.signum(leftSensorY) - leftSensorY;
+                    }
                 }
+            }
+            else{
+                numDistLeft = 0;
             }
         }
         else{
+            numDistLeft = 0;
             leftSensorX += Math.cos(heading) * leftDist;
             leftSensorY += Math.sin(heading) * leftDist;
         }
 
         double xErrorRight = 0;
         double yErrorRight = 0;
-        if (Math.abs(rightSensorY) <= 64 && Math.abs(rightSensorX) <= 64){
+        if (Math.abs(rightSensorY) <= wallDist - 8 && Math.abs(rightSensorX) <= wallDist - 8){
             rightSensorX += Math.cos(heading) * rightDist;
             rightSensorY += Math.sin(heading) * rightDist;
-            if (Math.abs(rightSensorX) >= 72 - 6 ^ Math.abs(rightSensorY) >= 72 - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
-                if (Math.abs(rightSensorX) >= 72 - 6){ //finding out which of the two walls
-                    xErrorRight = 72 * Math.signum(rightSensorX) - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+            if (Math.abs(rightSensorX) >= wallDist - 6 ^ Math.abs(rightSensorY) >= wallDist - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(rightSensorX) >= wallDist - 6){ //finding out which of the two walls
+                    numDistRight = Math.min(numDistRight + 1, 6);
+                    if (numDistRight == 6) {
+                        xErrorRight = wallDist * Math.signum(rightSensorX) - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
+                    }
                 }
                 else {
-                    yErrorRight = 72 * Math.signum(rightSensorY) - rightSensorY;
+                    numDistRight = Math.min(numDistRight + 1, 6);
+                    if (numDistRight == 6) {
+                        yErrorRight = wallDist * Math.signum(rightSensorY) - rightSensorY;
+                    }
                 }
+            }
+            else{
+                numDistRight = 0;
             }
         }
         else {
+            numDistRight = 0;
             rightSensorX += Math.cos(heading) * rightDist;
             rightSensorY += Math.sin(heading) * rightDist;
         }
@@ -148,7 +183,12 @@ public class Localizer {
         x += (xErrorLeft + xErrorRight)/2.0 * 0.01; // This means that the localization updates twice as fast when both sensors are in agreement
         y += (yErrorLeft + yErrorRight)/2.0 * 0.01; //0.01 is chosen at random, but because the weighted running average is inherently stable it still works
     }
+    int i = 0;
     public void update(){
+        if (i == 0){
+            lastImuHeading = imu.getAngularOrientation().firstAngle;
+        }
+        i ++;
         ramWallUpdate();
 
         long currentTime = System.nanoTime();
@@ -169,15 +209,20 @@ public class Localizer {
 
         relHistory.add(0,new Pose2d(relDeltaX,relDeltaY,deltaHeading));
 
+        double relDeltaXButNeg = relDeltaX;
+
         if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
             double r1 = relDeltaX / deltaHeading;
             double r2 = relDeltaY / deltaHeading;
             relDeltaX = Math.sin(deltaHeading) * r1 + (1.0 - Math.cos(deltaHeading)) * r2;
+            relDeltaXButNeg = Math.sin(deltaHeading) * r1 - (1.0 - Math.cos(deltaHeading)) * r2;
             relDeltaY = (1.0 - Math.cos(deltaHeading)) * r1 + Math.sin(deltaHeading) * r2;
         }
         double lastHeading = heading-deltaHeading;
         x += relDeltaX * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
         y += relDeltaY * Math.cos(lastHeading) + relDeltaX * Math.sin(lastHeading);
+        xButNeg += relDeltaXButNeg * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
+        yButNeg += relDeltaY * Math.cos(lastHeading) + relDeltaXButNeg * Math.sin(lastHeading);
 
         currentPose = new Pose2d(x, y, heading);
 
@@ -188,7 +233,7 @@ public class Localizer {
     }
     long lastIMUCall = System.currentTimeMillis();
     Pose2d lastPose = new Pose2d(0,0,0);
-    double lastImuHeading = imu.getAngularOrientation().firstAngle;
+    double lastImuHeading = 0;
     public void updateStrafeHeading(){
         //if (Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5){} //check strafing
         if (System.currentTimeMillis() - lastIMUCall >= 200){

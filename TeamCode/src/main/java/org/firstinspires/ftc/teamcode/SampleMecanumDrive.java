@@ -265,6 +265,7 @@ public class SampleMecanumDrive {
             fieldOverlay.strokeCircle(target.x, target.y, 2);
         }
         drawRobot(fieldOverlay,r,currentPose);
+        //drawRobot(fieldOverlay,new robotComponents(true, "#FF69B4"),new Pose2d(localizer.xButNeg,localizer.yButNeg,localizer.heading));
         fieldOverlay.setStroke("#FF0000");
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
         fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
@@ -403,7 +404,7 @@ public class SampleMecanumDrive {
                     magValRight = bulkData.getAnalogInputValue(magRight);
 
                     if (lastDistValLeft != distValLeft || lastDistValRight != distValRight){
-                        localizer.distUpdate(distValRight,distValLeft);
+                        localizer.distUpdate(distValRight,distValLeft); //ToDo:
                     }
                     lastDistValLeft = distValLeft;
                     lastDistValRight = distValRight;
@@ -854,13 +855,13 @@ public class SampleMecanumDrive {
         }
     }
 
-    long lastLoop;
-    public static double headingP = 1.145916, headingI = 0, headingInt = 0;
-    public static double velXP = 1, velXI = 0, velXInt = 0;
-    public static double velYP = 1, velYI = 0, velYInt = 0;
+    long lastLoop = System.nanoTime();
+    public static double headingP = 2.5, headingI = 0.03, headingD = 0.05, headingInt = 0, lastHeading = 0;
+    public static double velXP = 1, velXI = 0, velXD = 0, velXInt = 0, lastVelX = 0;
+    public static double velYP = 1, velYI = 0, velYD = 0, velYInt = 0, lastVelY = 0;
 
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
-
+        update();
         Pose2d targetPoint;
         lastLoop = System.nanoTime();
 
@@ -891,17 +892,28 @@ public class SampleMecanumDrive {
             }
 
             headingInt += headingError * loopTime;
-            double t = headingError * headingP + headingInt * headingI;
+            double dHeadingError = (headingError - lastHeading)/loopTime;
+            lastHeading = headingError;
+            double t = headingError * headingP + headingInt * headingI + dHeadingError * headingD;
 
-            double targetF = (relErrorX/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t)) * 45.0;
-            double errorF = targetF - relCurrentVel.x;
-            velXInt += errorF * loopTime;
-            double f = errorF * velXP + velXInt * velXI;
+            double f = 0;
+            double l = 0;
+            double errorSpeedButBad = (Math.abs(relErrorY) + Math.abs(relErrorX));
+            if (errorSpeedButBad != 0) {
+                double targetF = (relErrorX / errorSpeedButBad) * targetPoint.speed * (1.0 - Math.abs(t)) * 55.0 * 0.9;
+                double errorF = targetF - relCurrentVel.x;
+                velXInt += errorF * loopTime;
+                double dFError = (errorF - lastVelX) / loopTime;
+                lastVelX = errorF;
+                f = errorF * velXP + velXInt * velXI + dFError * velXD;
 
-            double targetL = (relErrorY/(relErrorY+relErrorX)) * targetPoint.speed/(1.0-Math.abs(t)) * 45.0;
-            double errorL = targetL - relCurrentVel.y;
-            velYInt += errorL * loopTime;
-            double l = errorL * velYP + velYInt * velYI;
+                double targetL = (relErrorY / errorSpeedButBad) * targetPoint.speed * (1.0 - Math.abs(t)) * 40.0 * 0.9;
+                double errorL = targetL - relCurrentVel.y;
+                velYInt += errorL * loopTime;
+                double dLError = (errorL - lastVelY) / loopTime;
+                lastVelY = errorL;
+                l = errorL * velYP + velYInt * velYI + dLError * velYD;
+            }
             pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
         }
         pinMotorPowers(0,0,0,0);

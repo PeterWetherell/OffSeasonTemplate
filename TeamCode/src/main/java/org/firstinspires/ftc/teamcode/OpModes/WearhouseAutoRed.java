@@ -36,7 +36,7 @@ public class WearhouseAutoRed  extends LinearOpMode {
             while (opModeIsActive() && trajectory1.points.size() >= 1) {
                 drive.target = trajectory1.points.get(0);
                 drive.update();
-                drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
+                //drive.pinMotorPowers(trajectory1.update(drive.currentPose, drive.relCurrentVel));
             }
             waitMillis(500);
 
@@ -47,7 +47,7 @@ public class WearhouseAutoRed  extends LinearOpMode {
             while (opModeIsActive() && trajectory2.points.size() >= 1) {
                 drive.target = trajectory2.points.get(0);
                 drive.update();
-                drive.pinMotorPowers(trajectory2.update(drive.currentPose, drive.relCurrentVel));
+                //drive.pinMotorPowers(trajectory2.update(drive.currentPose, drive.relCurrentVel));
             }
             waitMillis(500);
             i ++;
