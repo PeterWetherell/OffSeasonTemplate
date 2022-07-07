@@ -15,6 +15,8 @@ import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDCoefficients;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
@@ -674,23 +676,18 @@ public class SampleMecanumDrive {
                             && Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset)) <= 6
                             && Math.abs(t - currentV4barAngle) <= Math.toRadians(5))
                     ){slidesCase ++;}
-                    if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++; currentDepositAngle += Math.toRadians(20);setDepositAngle(Math.toRadians(180) - effectiveDepositAngle);updateDepositAngle();} //else if
+                    if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++; setDepositAngle(Math.toRadians(180) - effectiveDepositAngle);updateDepositAngle();} //else if
                     break;
                 case 4:
                     double depoAngle = Math.toRadians(180) - effectiveDepositAngle;
-                    currentDepositAngle += Math.signum(depoAngle - currentDepositAngle) * (depoAngle - depositTransferAngle) / (0.1) * loopTime;
-                    if (Math.abs(currentDepositAngle - depoAngle) <= Math.toRadians(2)){
-                        currentDepositAngle =  depoAngle;
-                    }
-
-                    if (Math.abs(currentDepositAngle - depoAngle) <= Math.toRadians(10) && System.currentTimeMillis()-slideTime <= effectiveDepositTime - 150){
+                    if (System.currentTimeMillis()-slideTime <= effectiveDepositTime - 150){
                         setV4barOrientation(targetV4barOrientation + v4barOffset);
                     }
                     else{
                         setV4barOrientation(targetV4barOrientation + v4barOffset - Math.toRadians(10));
                     }
 
-                    setDepositAngle(depoAngle); //currentDepositAngle
+                    setDepositAngle(depoAngle);
                     setTurretTarget(targetTurretHeading + turretOffset);
                     setSlidesLength(targetSlideExtensionLength + slidesOffset,0.25);
                     if (slidesCase == 4 && System.currentTimeMillis() - slideTime >= effectiveDepositTime){slidesCase ++; intakeCase = 0; lastIntakeCase = 0; currentDepositAngle = depositTransferAngle;} // + 70 effectiveDepositTime
@@ -836,35 +833,21 @@ public class SampleMecanumDrive {
         rightFront.setPower(v3);
     }
 
-    public void driveToPoint(LinearOpMode opMode, Pose2d targetPoint){
-        double error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
-        while (opMode.opModeIsActive() && error > 3){
-            update();
-            error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
-            double targetAngle = Math.atan2(targetPoint.y - currentPose.y,targetPoint.x - currentPose.x);
-            double headingError = targetAngle - currentPose.heading;
-            while (Math.abs(headingError) > Math.PI){
-                headingError -= Math.PI * 2 * Math.signum(headingError);
-            }
-            double relErrorX = Math.cos(headingError) * error;
-            double relErrorY = Math.sin(headingError) * error;
-            double t = Math.toDegrees(headingError) * 0.3/15;
-            double f = (relErrorX/error) * 0.5/(1.0-Math.abs(t));
-            double l = (relErrorY/error) * 0.5/(1.0-Math.abs(t));
-            pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
-        }
-    }
-
     long lastLoop = System.nanoTime();
-    public static double headingP = 2.5, headingI = 0.03, headingD = 0.05, headingInt = 0, lastHeading = 0;
-    public static double velXP = 1, velXI = 0, velXD = 0, velXInt = 0, lastVelX = 0;
-    public static double velYP = 1, velYI = 0, velYD = 0, velYInt = 0, lastVelY = 0;
+    public static PID heading = new PID(2.5,0.03,0.05);
+    public static PID velX = new PID(0.1,0,0);
+    public static PID velY = new PID(0.1,0,0);
+    public static PID x = new PID(0.1,0,0);
+    public static PID y = new PID(0.1,0,0);
+    double lastT = 0;
+    double lastF = 0;
+    double lastL = 0;
 
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
         update();
         Pose2d targetPoint;
         lastLoop = System.nanoTime();
-
+        trajectory.start();
         while (opMode.opModeIsActive() && trajectory.points.size() != 0){
 
             long currentTime = System.nanoTime();
@@ -884,6 +867,8 @@ public class SampleMecanumDrive {
             double relErrorX = Math.cos(headingError) * error;
             double relErrorY = Math.sin(headingError) * error;
 
+            headingError += trajectory.points.get(0).headingOffset;
+
             if (finalError <= 8 && trajectory.points.size() < 100){
                 headingError = lastTargetPoint.heading - currentPose.heading;
             }
@@ -891,29 +876,32 @@ public class SampleMecanumDrive {
                 headingError -= Math.PI * 2 * Math.signum(headingError);
             }
 
-            headingInt += headingError * loopTime;
-            double dHeadingError = (headingError - lastHeading)/loopTime;
-            lastHeading = headingError;
-            double t = headingError * headingP + headingInt * headingI + dHeadingError * headingD;
+            double t = Math.signum(heading.update(headingError)-lastT) * Math.toRadians(120)/0.5 * loopTime + lastT; //Makes sure that it doesn't change target speed too quickly (turning)
+            lastT = t;
 
             double f = 0;
             double l = 0;
-            double errorSpeedButBad = (Math.abs(relErrorY) + Math.abs(relErrorX));
+            double errorSpeedButBad = Math.abs(relErrorY) + Math.abs(relErrorX);
             if (errorSpeedButBad != 0) {
-                double targetF = (relErrorX / errorSpeedButBad) * targetPoint.speed * (1.0 - Math.abs(t)) * 55.0 * 0.9;
-                double errorF = targetF - relCurrentVel.x;
-                velXInt += errorF * loopTime;
-                double dFError = (errorF - lastVelX) / loopTime;
-                lastVelX = errorF;
-                f = errorF * velXP + velXInt * velXI + dFError * velXD;
-
-                double targetL = (relErrorY / errorSpeedButBad) * targetPoint.speed * (1.0 - Math.abs(t)) * 40.0 * 0.9;
-                double errorL = targetL - relCurrentVel.y;
-                velYInt += errorL * loopTime;
-                double dLError = (errorL - lastVelY) / loopTime;
-                lastVelY = errorL;
-                l = errorL * velYP + velYInt * velYI + dLError * velYD;
+                double speedConstant = targetPoint.speed * Math.min(1.1 - Math.abs(t),1.0) * 0.9 / errorSpeedButBad;
+                f = Math.signum(velX.update(relErrorX * speedConstant * 55.0 - relCurrentVel.x)-lastF) * 20.0/0.5 * loopTime + lastF; //Makes sure that it doesn't change target speed too quickly (forward/back)
+                l = Math.signum(velY.update(relErrorY * speedConstant * 40.0 - relCurrentVel.y)-lastL) * 15.0/0.5 * loopTime + lastL; //Makes sure that it doesn't change target speed too quickly (left/right)
+                lastF = f;
+                lastL = l;
             }
+
+            //correct for horizontal error
+            double errorX = (trajectory.pastPoints.get(0).x - currentPose.x)*Math.cos(currentPose.heading) - (trajectory.pastPoints.get(0).y - currentPose.y)*Math.sin(currentPose.heading);
+            double errorY = (trajectory.pastPoints.get(0).x - currentPose.x)*Math.sin(currentPose.heading) + (trajectory.pastPoints.get(0).y - currentPose.y)*Math.cos(currentPose.heading);
+
+            //trying to make it so that it only corrects for the amount that is perpendicular to the driving
+            errorX *= Math.abs(Math.sin(trajectory.pastPoints.get(0).headingOffset));
+            errorY *= Math.abs(Math.cos(trajectory.pastPoints.get(0).headingOffset));
+
+            f += x.update(errorX);
+            l += y.update(errorY);
+
+
             pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
         }
         pinMotorPowers(0,0,0,0);
@@ -932,14 +920,6 @@ public class SampleMecanumDrive {
     public double getTurretAngle(){
         updateHub2();
         return currentTurretAngle;
-    }
-    public double getDistValLeft() {
-        updateHub2();
-        return distValLeft;
-    }
-    public double getDistValRight() {
-        updateHub2();
-        return distValRight;
     }
     public int getMagValLeft() {
         updateHub2();
