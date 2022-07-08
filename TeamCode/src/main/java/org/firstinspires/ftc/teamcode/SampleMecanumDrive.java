@@ -717,8 +717,8 @@ public class SampleMecanumDrive {
             double errorSpeedButBad = Math.abs(relErrorY) + Math.abs(relErrorX);
             if (errorSpeedButBad != 0) {
                 double speedConstant = targetPoint.speed * Math.min(1.1 - Math.abs(t),1.0) * 0.9 / errorSpeedButBad;
-                f = Math.signum(velX.update(relErrorX * speedConstant * 55.0 - relCurrentVel.x)-lastF) * 20.0/0.5 * loopTime + lastF; //Makes sure that it doesn't change target speed too quickly (forward/back)
-                l = Math.signum(velY.update(relErrorY * speedConstant * 40.0 - relCurrentVel.y)-lastL) * 15.0/0.5 * loopTime + lastL; //Makes sure that it doesn't change target speed too quickly (left/right)
+                f = Math.signum(velX.update(relErrorX * speedConstant * 55.0 - relCurrentVel.x)-lastF) * 15.0/0.5 * loopTime + lastF; //Makes sure that it doesn't change target speed too quickly (forward/back)
+                l = Math.signum(velY.update(relErrorY * speedConstant * 40.0 - relCurrentVel.y)-lastL) * 12.5/0.5 * loopTime + lastL; //Makes sure that it doesn't change target speed too quickly (left/right)
                 lastF = f;
                 lastL = l;
             }

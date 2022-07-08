@@ -33,7 +33,7 @@ public class Trajectory {
                             end.heading,
                             end.headingOffset,
                             end.radius,
-                            Math.min(Math.max((d - end.radius - 4) / 16 * i * (end.speed - start.speed) + start.speed, Math.min(start.speed,end.speed)),Math.max(start.speed,end.speed))
+                            end.speed
                     )
             );
         }
@@ -45,18 +45,17 @@ public class Trajectory {
     public Trajectory end(){
         if (slowDown){
             internalPoints.get(internalPoints.size()-1).radius = 4;
-            internalPoints.get(internalPoints.size()-1).speed = 0.20;
-            for (int i = 2; i <= internalPoints.size(); i ++){
-                double d = Math.sqrt(Math.pow(internalPoints.get(internalPoints.size() - i).x-internalPoints.get(internalPoints.size()-1).x,2)+Math.pow(internalPoints.get(internalPoints.size() - i).y-internalPoints.get(internalPoints.size()-1).y,2)) + internalPoints.get(internalPoints.size()-i).radius;
-                double speed = 0.20 + Math.max((d-8)/15,0);
-                double radius = 4 + Math.max((d-5) * 0.6666,0);
-                if (speed >= 1){
-                    Trajectory a = new Trajectory(new Pose2d(0,0), slowDown);
-                    a.internalPoints = internalPoints;
-                    return a;
-                }
-                internalPoints.get(internalPoints.size()-i).speed = Math.min(internalPoints.get(internalPoints.size()-i).speed,speed);
-                internalPoints.get(internalPoints.size()-i).radius = Math.min(internalPoints.get(internalPoints.size()-i).radius,radius);
+            double lastSpeed = internalPoints.get(internalPoints.size()-1).speed * 47.5;
+            double targetLastSpeed = 0.25 * 47.5;
+            double time = (lastSpeed-targetLastSpeed)/30.0;
+            double distance = -30.0/2.0*Math.pow(time,2) + 47.5*time + 5;
+            int i = 2;
+            double d = 0;
+            while(d <= distance){
+                d = Math.sqrt(Math.pow(internalPoints.get(internalPoints.size() - i).x-internalPoints.get(internalPoints.size()-1).x,2)+Math.pow(internalPoints.get(internalPoints.size() - i).y-internalPoints.get(internalPoints.size()-1).y,2)) + internalPoints.get(internalPoints.size()-i).radius;
+                internalPoints.get(internalPoints.size()-i).speed = Math.min(internalPoints.get(internalPoints.size()-i).speed,0.25);
+                internalPoints.get(internalPoints.size()-i).radius = Math.min(internalPoints.get(internalPoints.size()-i).radius,4 + Math.max((d-5) * 0.6666,0));
+                i ++;
             }
         }
         Trajectory a = new Trajectory(new Pose2d(0,0), slowDown);
