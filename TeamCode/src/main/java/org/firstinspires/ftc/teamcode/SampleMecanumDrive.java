@@ -32,7 +32,7 @@ import java.util.List;
 @Config
 public class SampleMecanumDrive {
 
-    double targetSlidesPose = 3, slidesSpeed = 1, slidesI = 0;
+    double targetSlidesPose = 3, slidesSpeed = 1;
     double targetTurretPose = 0, turretI = 0;
 
     boolean startSlides = false;
@@ -155,27 +155,18 @@ public class SampleMecanumDrive {
         dashboard = FtcDashboard.getInstance();
         dashboard.setTelemetryTransmissionInterval(25);
     }
-    public void pinMotorPowers (double v, double v1, double v2, double v3) {
-        localizer.updatePowerVector(new double[]{v,v1,v2,v3});
-        motorPriorities.get(0).setTargetPower(v);
-        motorPriorities.get(1).setTargetPower(v1);
-        motorPriorities.get(2).setTargetPower(v2);
-        motorPriorities.get(3).setTargetPower(v3);
-    }
-    public void pinMotorPowers (double[] a) {
-        localizer.updatePowerVector(a);
-        motorPriorities.get(0).setTargetPower(a[0]);
-        motorPriorities.get(1).setTargetPower(a[1]);
-        motorPriorities.get(2).setTargetPower(a[2]);
-        motorPriorities.get(3).setTargetPower(a[3]);
-    }
     int loops = 0;
     int sensorLoops = 0;
     int numMotorsUpdated = 0;
     public Pose2d target = null;
     boolean updateHub2 = false;
+
+    PID turretPID = new PID(0.35,0.05,0.007);
+    PID slidePID = new PID(0.2,0.05,0.001);
     public void update(){
         if (loops == 0){
+            turretPID.update(0);
+            slidePID.update(0);
             start = System.nanoTime();
             loopStart = System.nanoTime();
         }
@@ -191,8 +182,30 @@ public class SampleMecanumDrive {
             updateHub2();
             updateIntake();
             updateSlides();
-            updateTurretHeading();
-            updateSlidesLength();
+
+            double error = targetTurretPose - getTurretAngle();
+            motorPriorities.get(5).setTargetPower(turretPID.update(error));
+
+            error = targetSlidesPose - getSlideLength();
+            double powerSlides;
+            if (Math.abs(error) <= 3){
+                if (Math.abs(error) >= 0.25){
+                    powerSlides = slidePID.update(error);
+                }
+                else{
+                    powerSlides = slidePID.update(0);
+                }
+            }
+            else {
+                slidePID.update(0);
+                slidePID.resetIntegral();
+                powerSlides = -0.2;
+                if (error >= 3){
+                    powerSlides = slidesSpeed;
+                }
+            }
+            motorPriorities.get(6).setTargetPower(powerSlides);
+
         }
         else {
             sensorLoops ++;
@@ -224,6 +237,8 @@ public class SampleMecanumDrive {
 
         updateHub2 = false;
         loopStart = System.nanoTime();
+
+        updateV4barAngle(loopTime);
 
         packet.put("l loopSpeed", loopTime * 1000);
         packet.put("l avgLoopSpeed", (System.nanoTime() - start) / (1000000.0 * loops));
@@ -272,35 +287,6 @@ public class SampleMecanumDrive {
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
         fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
         dashboard.sendTelemetryPacket(packet);
-    }
-    public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
-        for (Component c : r.components){
-            fieldOverlay.setStrokeWidth(c.lineRadius);
-            fieldOverlay.setStroke(c.color);
-            if (c.p.size() == 1){
-                drawPoint(fieldOverlay,c.p.get(0),c.radius,poseEstimate);
-            }
-            else {
-                for (int i = 1; i < c.p.size() + 1; i++) {
-                    drawPoint(fieldOverlay, c.p.get(i % c.p.size()), c.radius, poseEstimate);
-                    drawLine(fieldOverlay, c.p.get(i % c.p.size()), c.p.get((i - 1)%c.p.size()), poseEstimate);
-                }
-            }
-        }
-    }
-    public void drawLine(Canvas c, Point p, Point p2, Pose2d pose){
-        double x1 = Math.cos(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) - Math.sin(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + pose.getX();
-        double y1 = Math.cos(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + Math.sin(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) + pose.getY();
-        double x2 = Math.cos(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) - Math.sin(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + pose.getX();
-        double y2 = Math.cos(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + Math.sin(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) + pose.getY();
-        c.strokeLine(x1,y1,x2,y2);
-    }
-    public void drawPoint(Canvas c, Point p, double radius, Pose2d pose){
-        if (radius != 0){
-            double x = Math.cos(pose.getHeading())*p.x - Math.sin(pose.getHeading())*p.y + pose.getX();
-            double y = Math.cos(pose.getHeading())*p.y + Math.sin(pose.getHeading())*p.x + pose.getY();
-            c.strokeCircle(x,y,radius);
-        }
     }
 
     int rightIntakeVal = 0, leftIntakeVal = 0, depositVal = 0, flexSensorVal = 0;
@@ -406,7 +392,7 @@ public class SampleMecanumDrive {
                     magValRight = bulkData.getAnalogInputValue(magRight);
 
                     if (lastDistValLeft != distValLeft || lastDistValRight != distValRight){
-                        localizer.distUpdate(distValRight,distValLeft); //ToDo:
+                        localizer.distUpdate(distValRight,distValLeft);
                     }
                     lastDistValLeft = distValLeft;
                     lastDistValRight = distValRight;
@@ -418,66 +404,6 @@ public class SampleMecanumDrive {
             }
         }
     }
-    public double targetSlideExtensionLength = 0;
-    public double targetTurretHeading = 0;
-    public double targetV4barOrientation = 0;
-    public double depositAngle = Math.toRadians(-45);
-    public void startDeposit(Pose2d endPose, Pose2d targetPose, double height, double radius){
-        double turretX = -0.75;
-        double depositLength = 4.0;
-        endPose = new Pose2d(
-                endPose.getX() + Math.cos(endPose.getHeading()) * turretX,
-                endPose.getY() + Math.sin(endPose.getHeading()) * turretX,
-                endPose.getHeading()
-        );
-        double d = Math.sqrt(Math.pow(targetPose.getX() - endPose.getX(),2) + Math.pow(targetPose.getY() - endPose.getY(),2));
-        double x1 = targetPose.getX() + radius * -1.0 * (targetPose.getX()-endPose.getX())/d;
-        double y1 = targetPose.getY() + radius * -1.0 * (targetPose.getY()-endPose.getY())/d;
-        Pose2d relTarget = new Pose2d(
-                Math.cos(endPose.getHeading())*(endPose.getX()-x1) + Math.sin(endPose.getHeading())*(endPose.getY()-y1),
-                Math.cos(endPose.getHeading())*(endPose.getY()-y1) - Math.sin(endPose.getHeading())*(endPose.getX()-x1)
-        );
-        targetTurretHeading = Math.atan2(relTarget.getY(),relTarget.getX());
-        height -= (9.44882 + Math.sin(depositAngle) * depositLength);
-        double effectiveSlideAngle = Math.toRadians(8.92130165444);
-        double v4BarLength = 8.75;
-        double slope = Math.tan(effectiveSlideAngle);
-        double length = Math.sqrt(Math.pow(relTarget.getY(),2) + Math.pow(relTarget.getX(),2)) - Math.cos(depositAngle) * depositLength - 7.9503937/Math.cos(effectiveSlideAngle);
-        double a = (slope*slope + 1);
-        double b = -1.0*(2*length + 2*slope*height);
-        double c = length*length - Math.pow(v4BarLength,2) + height * height;
-        if (4.0 * a * c < b * b) {
-            double slideExtension = (-1.0 * b - Math.sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
-            targetSlideExtensionLength = slideExtension / (Math.cos(effectiveSlideAngle));
-            targetV4barOrientation = Math.atan2(height - slideExtension * slope, slideExtension - length);
-        }
-        else{
-            targetSlideExtensionLength = length - v4BarLength;
-            targetV4barOrientation = Math.toRadians(180);
-        }
-        if (targetV4barOrientation < 0){
-            targetV4barOrientation += Math.PI * 2;
-        }
-        targetSlideExtensionLength = Math.max(0,targetSlideExtensionLength);
-        startSlides = true;
-        slidesDelay = System.currentTimeMillis();
-    }
-
-    public void startIntake(boolean rightIntake){
-        double targetIntake = 1;
-        if (rightIntake){
-            targetIntake = -1;
-        }
-        startIntake = true;
-        intakeDelay = System.currentTimeMillis();
-    }
-
-    boolean deposit = false;
-    public void deposit(){
-        deposit = true;
-        depositDelay = System.currentTimeMillis();
-    }
-
     public boolean transferMineral = false;
     public double currentIntake = 0;
     public int intakeCase = 0, lastIntakeCase = 0;
@@ -500,17 +426,14 @@ public class SampleMecanumDrive {
     public double transfer1Power = 1.0;
     public double returnSlideLength = 0.35;
     public void updateIntake(){
-
         if (startIntake && intakeCase == 0){
             intakeCase = 1;
             intakeTime = System.currentTimeMillis();
             startIntake = false;
         }
-
         if (System.currentTimeMillis() - intakeDelay >= 500){
             startIntake = false;
         }
-
         if (!transferMineral){
             setDepositAngle(depositInterfaceAngle);
             setV4barOrientation(v4barInterfaceAngle);
@@ -590,7 +513,6 @@ public class SampleMecanumDrive {
             case 7: motorPriorities.get(4).setTargetPower(transfer1Power); if (System.currentTimeMillis() - intakeTime >= 30 && (intakeDepositTransfer || System.currentTimeMillis() - intakeTime >= transfer2Time)){intakeCase ++;currentDepositAngle = depositInterfaceAngle;}break;
         }
     }
-
     public double turretOffset = 0;
     public double slidesOffset = 0;
     public double v4barOffset = 0;
@@ -607,14 +529,12 @@ public class SampleMecanumDrive {
             slideTime = System.currentTimeMillis();
             startSlides = false;
         }
-
         if (System.currentTimeMillis() - depositDelay >= 500){
             deposit = false;
         }
         if (System.currentTimeMillis() - slidesDelay >= 500){
             startSlides = false;
         }
-
         if (transferMineral) { // I have deposited into the area
             if (lastSlidesCase != slidesCase) {
                 slideTime = System.currentTimeMillis();
@@ -728,84 +648,15 @@ public class SampleMecanumDrive {
             }
         }
     }
-
-    public void setSlidesLength(double inches, double speed){
-        targetSlidesPose = inches;
-        slidesSpeed = speed;
-    }
-
-    public void updateSlidesLength(){
-        double error = targetSlidesPose - getSlideLength();
-        double p = error * 0.2;
-        double kStatic = Math.signum(error) * slidesSpeed/2.0;
-        if (Math.abs(error) <= 3 && loops >= 2){
-            slidesI += (error) * loopTime * 0.05;
-        }
-        else{
-            slidesI = 0;
-        }
-        if (Math.abs(error) <= 3){ // we are within 3 from the end
-            p /= 2;
-            if (error >= 0.5){ // the target is greater than the current by 0.5 we engage the PID to get it to 0
-                kStatic = 0.175 + getSlideLength() * 0.002;
-            }
-            else if (error <= -0.5) { // the target is less than the current by 0.5 we slowly extend it back
-                kStatic = -0.15 - (1.0/getSlideLength()) * 0.07;
-                p /= 2.0;
-            }
-            else{// We are within +- 0.5 which means we use a holding power
-                p = 0.085;
-                kStatic = 0;
-            }
-        }
-        else if (error < -3){ // We are more than 3 away so we go backward slowly
-            kStatic = -0.1145; //-0.3 => 0.2 "ur bad" ~ @HudsonKim => 0.15
-            p /= 4.0; // making it go back slower
-        }
-        else if (error > 3){ // We are more than 3 away so we go forward at max speed
-            kStatic = slidesSpeed;
-            p = 0;
-        }
-        motorPriorities.get(6).setTargetPower(kStatic + p + slidesI);
-    }
-
-    public void setTurretTarget(double radians){
-        targetTurretPose = radians;
-    }
-
-    public void updateTurretHeading(){
-        double error = targetTurretPose - getTurretAngle();
-        turretI += Math.toDegrees(error) * loopTime * 0.01;
-        if (Math.abs(error) >= Math.toRadians(5)){
-            motorPriorities.get(5).setTargetPower(Math.signum(error) * 0.35 + turretI);
-        }
-        else if (Math.abs(error) >= Math.toRadians(1)){
-            motorPriorities.get(5).setTargetPower(Math.signum(error) * 0.20 + turretI);
-        }
-        else {
-            motorPriorities.get(5).setTargetPower(0);
-            turretI = 0;
-        }
-    }
-
     double targetDepositAngle = 0;
     double currentV4barAngle = 0;
     double targetV4barAngle = 0;
-    public void setV4barDeposit(double targetDepositAngle, double targetV4barOrientation){
-        targetV4barAngle = targetV4barOrientation;
-        currentV4barAngle = targetV4barOrientation;
-        this.targetDepositAngle = targetDepositAngle;
-        updateDepositAngle();
-        updateV4barAngle(0);
-    }
-
     public void updateDepositAngle(){
         double angle = targetDepositAngle - currentV4barAngle;
         double targetPos = angle * 0.215820468 + 0.21;
         targetPos = Math.min(Math.max(targetPos,0.0),0.86);
         servos.get(2).setPosition(targetPos);
     }
-
     public void updateV4barAngle(double loopSpeed){
         currentV4barAngle += Math.signum(targetV4barAngle - currentV4barAngle) * Math.PI / 0.875 * loopSpeed; // 0.825 => 0.905
         if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(1)){
@@ -816,23 +667,6 @@ public class SampleMecanumDrive {
         servos.get(4).setPosition(servoPos);
         updateDepositAngle();
     }
-
-    public void setDepositAngle(double targetAngle){
-        targetDepositAngle = targetAngle;
-    }
-
-    public void setV4barOrientation(double targetV4barOrientation){
-        targetV4barAngle = targetV4barOrientation;
-    }
-
-    public void setMotorPowers(double v, double v1, double v2, double v3) {
-        localizer.updatePowerVector(new double[]{v,v1,v2,v3});
-        leftFront.setPower(v);
-        leftBack.setPower(v1);
-        rightBack.setPower(v2);
-        rightFront.setPower(v3);
-    }
-
     long lastLoop = System.nanoTime();
     public static PID heading = new PID(2.5,0.03,0.05);
     public static PID velX = new PID(0.1,0,0);
@@ -842,7 +676,6 @@ public class SampleMecanumDrive {
     double lastT = 0;
     double lastF = 0;
     double lastL = 0;
-
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
         update();
         Pose2d targetPoint;
@@ -906,8 +739,40 @@ public class SampleMecanumDrive {
         }
         pinMotorPowers(0,0,0,0);
     }
-
-
+    public void setSlidesLength(double inches, double speed) {
+        targetSlidesPose = inches;
+        slidesSpeed = speed;
+    }
+    public void setTurretTarget(double radians){
+        targetTurretPose = radians;
+    }
+    public void setDepositAngle(double targetAngle){
+        targetDepositAngle = targetAngle;
+    }
+    public void setV4barOrientation(double targetV4barOrientation){
+        targetV4barAngle = targetV4barOrientation;
+    }
+    public void setMotorPowers(double v, double v1, double v2, double v3) {
+        localizer.updatePowerVector(new double[]{v,v1,v2,v3});
+        leftFront.setPower(v);
+        leftBack.setPower(v1);
+        rightBack.setPower(v2);
+        rightFront.setPower(v3);
+    }
+    public void pinMotorPowers (double v, double v1, double v2, double v3) {
+        localizer.updatePowerVector(new double[]{v,v1,v2,v3});
+        motorPriorities.get(0).setTargetPower(v);
+        motorPriorities.get(1).setTargetPower(v1);
+        motorPriorities.get(2).setTargetPower(v2);
+        motorPriorities.get(3).setTargetPower(v3);
+    }
+    public void pinMotorPowers (double[] a) {
+        localizer.updatePowerVector(a);
+        motorPriorities.get(0).setTargetPower(a[0]);
+        motorPriorities.get(1).setTargetPower(a[1]);
+        motorPriorities.get(2).setTargetPower(a[2]);
+        motorPriorities.get(3).setTargetPower(a[3]);
+    }
     //Lots of getters in order to ensure that the program updates the expansion hub
     public double getSlideLength(){
         updateHub2();
@@ -928,5 +793,91 @@ public class SampleMecanumDrive {
     public int getMagValRight() {
         updateHub2();
         return magValRight;
+    }
+    public void startIntake(boolean rightIntake){
+        double targetIntake = 1;
+        if (rightIntake){
+            targetIntake = -1;
+        }
+        startIntake = true;
+        intakeDelay = System.currentTimeMillis();
+    }
+    public double targetSlideExtensionLength = 0;
+    public double targetTurretHeading = 0;
+    public double targetV4barOrientation = 0;
+    public double depositAngle = Math.toRadians(-45);
+    public void startDeposit(Pose2d endPose, Pose2d targetPose, double height, double radius){
+        double turretX = -0.75;
+        double depositLength = 4.0;
+        endPose = new Pose2d(
+                endPose.getX() + Math.cos(endPose.getHeading()) * turretX,
+                endPose.getY() + Math.sin(endPose.getHeading()) * turretX,
+                endPose.getHeading()
+        );
+        double d = Math.sqrt(Math.pow(targetPose.getX() - endPose.getX(),2) + Math.pow(targetPose.getY() - endPose.getY(),2));
+        double x1 = targetPose.getX() + radius * -1.0 * (targetPose.getX()-endPose.getX())/d;
+        double y1 = targetPose.getY() + radius * -1.0 * (targetPose.getY()-endPose.getY())/d;
+        Pose2d relTarget = new Pose2d(
+                Math.cos(endPose.getHeading())*(endPose.getX()-x1) + Math.sin(endPose.getHeading())*(endPose.getY()-y1),
+                Math.cos(endPose.getHeading())*(endPose.getY()-y1) - Math.sin(endPose.getHeading())*(endPose.getX()-x1)
+        );
+        targetTurretHeading = Math.atan2(relTarget.getY(),relTarget.getX());
+        height -= (9.44882 + Math.sin(depositAngle) * depositLength);
+        double effectiveSlideAngle = Math.toRadians(8.92130165444);
+        double v4BarLength = 8.75;
+        double slope = Math.tan(effectiveSlideAngle);
+        double length = Math.sqrt(Math.pow(relTarget.getY(),2) + Math.pow(relTarget.getX(),2)) - Math.cos(depositAngle) * depositLength - 7.9503937/Math.cos(effectiveSlideAngle);
+        double a = (slope*slope + 1);
+        double b = -1.0*(2*length + 2*slope*height);
+        double c = length*length - Math.pow(v4BarLength,2) + height * height;
+        if (4.0 * a * c < b * b) {
+            double slideExtension = (-1.0 * b - Math.sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
+            targetSlideExtensionLength = slideExtension / (Math.cos(effectiveSlideAngle));
+            targetV4barOrientation = Math.atan2(height - slideExtension * slope, slideExtension - length);
+        }
+        else{
+            targetSlideExtensionLength = length - v4BarLength;
+            targetV4barOrientation = Math.toRadians(180);
+        }
+        if (targetV4barOrientation < 0){
+            targetV4barOrientation += Math.PI * 2;
+        }
+        targetSlideExtensionLength = Math.max(0,targetSlideExtensionLength);
+        startSlides = true;
+        slidesDelay = System.currentTimeMillis();
+    }
+    boolean deposit = false;
+    public void deposit(){
+        deposit = true;
+        depositDelay = System.currentTimeMillis();
+    }
+    public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
+        for (Component c : r.components){
+            fieldOverlay.setStrokeWidth(c.lineRadius);
+            fieldOverlay.setStroke(c.color);
+            if (c.p.size() == 1){
+                drawPoint(fieldOverlay,c.p.get(0),c.radius,poseEstimate);
+            }
+            else {
+                for (int i = 1; i < c.p.size() + 1; i++) {
+                    drawPoint(fieldOverlay, c.p.get(i % c.p.size()), c.radius, poseEstimate);
+                    drawLine(fieldOverlay, c.p.get(i % c.p.size()), c.p.get((i - 1)%c.p.size()), poseEstimate);
+                }
+            }
+        }
+    }
+    public void drawLine(Canvas c, Point p, Point p2, Pose2d pose){
+        double x1 = Math.cos(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) - Math.sin(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + pose.getX();
+        double y1 = Math.cos(pose.getHeading())*(p.y+Math.signum(p.y-p2.y)*0.5) + Math.sin(pose.getHeading())*(p.x+Math.signum(p.x-p2.x)*0.5) + pose.getY();
+        double x2 = Math.cos(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) - Math.sin(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + pose.getX();
+        double y2 = Math.cos(pose.getHeading())*(p2.y+Math.signum(p2.y-p.y)*0.5) + Math.sin(pose.getHeading())*(p2.x+Math.signum(p2.x-p.x)*0.5) + pose.getY();
+        c.strokeLine(x1,y1,x2,y2);
+    }
+    public void drawPoint(Canvas c, Point p, double radius, Pose2d pose){
+        if (radius != 0){
+            double x = Math.cos(pose.getHeading())*p.x - Math.sin(pose.getHeading())*p.y + pose.getX();
+            double y = Math.cos(pose.getHeading())*p.y + Math.sin(pose.getHeading())*p.x + pose.getY();
+            c.strokeCircle(x,y,radius);
+        }
     }
 }
