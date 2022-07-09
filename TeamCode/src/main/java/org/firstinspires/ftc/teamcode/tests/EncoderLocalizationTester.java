@@ -65,17 +65,29 @@ public class EncoderLocalizationTester extends LinearOpMode {
         dashboard.setTelemetryTransmissionInterval(25);
 
         waitForStart();
-
+        int loops = 0;
+        double totalBulkDataTime = 0;
+        double totalImuTime = 0;
         while(opModeIsActive()){
+            loops ++;
             TelemetryPacket packet = new TelemetryPacket();
-
+            Long start = System.nanoTime();
             RevBulkData bulkData = expansionHub1.getBulkInputData();
             encoders[0].update(bulkData.getMotorCurrentPosition(rightFront));
             encoders[1].update(bulkData.getMotorCurrentPosition(leftFront));
             encoders[2].update(bulkData.getMotorCurrentPosition(rightBack));
             encoders[3].update(bulkData.getMotorCurrentPosition(leftBack));
-
+            double bulkDataTime = (System.nanoTime()-start)/1000000000.0;
+            totalBulkDataTime += bulkDataTime;
+            start = System.nanoTime();
             double heading = imu.getAngularOrientation().firstAngle;
+            double imuTime = (System.nanoTime()-start)/1000000000.0;
+            totalImuTime += imuTime;
+            packet.put("BulkData Read Time",bulkDataTime);
+            packet.put("Average BulkData Read Time",totalBulkDataTime/loops);
+            packet.put("IMU Read Time",imuTime);
+            packet.put("Average IMU Read Time",totalImuTime/loops);
+            packet.put("Loops",loops);
 
             Canvas fieldOverlay = packet.fieldOverlay();
             for (int i = 0; i < 4; i ++){
