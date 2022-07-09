@@ -22,7 +22,7 @@ import org.openftc.revextensions2.RevBulkData;
 import java.util.List;
 
 @Config
-public class EncoderTester extends LinearOpMode {
+public class EncoderLocalizationTester extends LinearOpMode {
     ExpansionHubEx expansionHub1;
     public ExpansionHubMotor leftFront, leftBack, rightBack, rightFront;
     public BNO055IMU imu;
