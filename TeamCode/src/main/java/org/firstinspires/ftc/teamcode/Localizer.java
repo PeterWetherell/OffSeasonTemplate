@@ -10,8 +10,6 @@ public class Localizer {
     long lastTime = System.nanoTime();
     public double x = 0;
     public double y = 0;
-    public double xButNeg = 0;
-    public double yButNeg = 0;
     double heading = 0;
     Pose2d currentPose = new Pose2d(0,0,0);
     Pose2d currentVel = new Pose2d(0,0,0);
@@ -124,8 +122,8 @@ public class Localizer {
         if (Math.abs(leftSensorY) <= wallDist - 8 && Math.abs(leftSensorX) <= wallDist - 8){ //Make sure the sensor itself is not near a wall
             leftSensorX += Math.cos(heading) * leftDist;
             leftSensorY += Math.sin(heading) * leftDist;
-            if (Math.abs(leftSensorX) >= wallDist - 6 ^ Math.abs(leftSensorY) >= wallDist - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
-                if (Math.abs(leftSensorX) >= wallDist - 6){ //finding out which of the two walls
+            if (Math.abs(Math.abs(leftSensorX)-wallDist) <= 3 ^ Math.abs(Math.abs(leftSensorY)-wallDist) <= 3){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(Math.abs(leftSensorX)-wallDist) <= 3){ //finding out which of the two walls
                     numDistLeft = Math.min(numDistLeft + 1, 6);
                     if (numDistLeft == 6) {
                         xErrorLeft = wallDist * Math.signum(leftSensorX) - leftSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
@@ -153,8 +151,8 @@ public class Localizer {
         if (Math.abs(rightSensorY) <= wallDist - 8 && Math.abs(rightSensorX) <= wallDist - 8){
             rightSensorX += Math.cos(heading) * rightDist;
             rightSensorY += Math.sin(heading) * rightDist;
-            if (Math.abs(rightSensorX) >= wallDist - 6 ^ Math.abs(rightSensorY) >= wallDist - 6){ //Check to make sure that the reading lines up with a wall & only 1 wall
-                if (Math.abs(rightSensorX) >= wallDist - 6){ //finding out which of the two walls
+            if (Math.abs(Math.abs(rightSensorX)-wallDist) <= 3 ^ Math.abs(Math.abs(rightSensorY)-wallDist) <= 3){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(Math.abs(rightSensorX)-wallDist) <= 3){ //finding out which of the two walls
                     numDistRight = Math.min(numDistRight + 1, 6);
                     if (numDistRight == 6) {
                         xErrorRight = wallDist * Math.signum(rightSensorX) - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
@@ -198,31 +196,30 @@ public class Localizer {
         double deltaRight = encoders[0].getDelta();
         double deltaLeft = encoders[1].getDelta();
         double deltaBack = encoders[2].getDelta();
+        double rightY = encoders[0].y;
+        double leftY = encoders[1].y;
+        double backX = encoders[2].x;
 
         //This is the heading because the heading is proportional to the difference between the left and right wheel.
-        double deltaHeading = (deltaRight - deltaLeft)/Math.abs(encoders[1].y-encoders[0].y);
-        heading += deltaHeading; //(encoders[0].getCurrentDist() - encoders[1].getCurrentDist())/(Math.abs(encoders[1].y-encoders[0].y));
+        double deltaHeading = (deltaRight - deltaLeft)/(leftY-rightY);
         //This gives us deltaY because the back minus theta*R is the amount moved to the left minus the amount of movement in the back encoder due to change in heading
-        double relDeltaY = deltaBack - deltaHeading*encoders[2].x;
+        double relDeltaY = deltaBack - deltaHeading*backX;
         //This is a weighted average for the amount moved forward with the weights being how far away the other one is from the center
-        double relDeltaX = (deltaLeft*encoders[0].y - deltaRight*encoders[1].y)/(encoders[0].y-encoders[1].y);
+        double relDeltaX = (deltaLeft*rightY - deltaRight*leftY)/(leftY-rightY);
 
         relHistory.add(0,new Pose2d(relDeltaX,relDeltaY,deltaHeading));
 
-        double relDeltaXButNeg = relDeltaX;
 
         if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
             double r1 = relDeltaX / deltaHeading;
             double r2 = relDeltaY / deltaHeading;
-            relDeltaX = Math.sin(deltaHeading) * r1 + (1.0 - Math.cos(deltaHeading)) * r2;
-            relDeltaXButNeg = Math.sin(deltaHeading) * r1 - (1.0 - Math.cos(deltaHeading)) * r2;
+            relDeltaX = Math.sin(deltaHeading) * r1 - (1.0 - Math.cos(deltaHeading)) * r2;
             relDeltaY = (1.0 - Math.cos(deltaHeading)) * r1 + Math.sin(deltaHeading) * r2;
         }
-        double lastHeading = heading-deltaHeading;
-        x += relDeltaX * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
-        y += relDeltaY * Math.cos(lastHeading) + relDeltaX * Math.sin(lastHeading);
-        xButNeg += relDeltaXButNeg * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
-        yButNeg += relDeltaY * Math.cos(lastHeading) + relDeltaXButNeg * Math.sin(lastHeading);
+        x += relDeltaX * Math.cos(heading) - relDeltaY * Math.sin(heading);
+        y += relDeltaY * Math.cos(heading) + relDeltaX * Math.sin(heading);
+
+        heading += deltaHeading;
 
         currentPose = new Pose2d(x, y, heading);
 

@@ -7,6 +7,7 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
@@ -21,6 +22,7 @@ import org.openftc.revextensions2.RevBulkData;
 
 import java.util.List;
 
+@TeleOp
 @Config
 public class EncoderLocalizationTester extends LinearOpMode {
     ExpansionHubEx expansionHub1;
@@ -97,10 +99,10 @@ public class EncoderLocalizationTester extends LinearOpMode {
             }
             lastHeading = heading;
 
-            drawRobot(fieldOverlay,new robotComponents(true, "#0275D8"),poseBlock[0]);
-            drawRobot(fieldOverlay,new robotComponents(true, "#5CB85C"),poseBlock[1]);
-            drawRobot(fieldOverlay,new robotComponents(true, "#F0AD4E"),poseBlock[2]);
-            drawRobot(fieldOverlay,new robotComponents(true, "#D9534F"),poseBlock[3]);
+            drawRobot(fieldOverlay,new robotComponents(true, "#0275D8"),poseBlock[0]); //blue 0,2
+            drawRobot(fieldOverlay,new robotComponents(true, "#5CB85C"),poseBlock[1]); //green 1,2
+            drawRobot(fieldOverlay,new robotComponents(true, "#F0AD4E"),poseBlock[2]); //orange 0,3
+            drawRobot(fieldOverlay,new robotComponents(true, "#D9534F"),poseBlock[3]); //red 1,3
 
             dashboard.sendTelemetryPacket(packet);
         }
@@ -130,6 +132,7 @@ public class EncoderLocalizationTester extends LinearOpMode {
 
         currentLocation.x += relDeltaX * Math.cos(lastHeading) - relDeltaY * Math.sin(lastHeading);
         currentLocation.y += relDeltaY * Math.cos(lastHeading) + relDeltaX * Math.sin(lastHeading);
+        currentLocation.heading = heading;
 
         return currentLocation;
     }
