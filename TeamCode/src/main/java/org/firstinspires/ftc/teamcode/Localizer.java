@@ -116,13 +116,17 @@ public class Localizer {
         double rightSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) * -6.0;
         double leftSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) *  6.0;
         double leftSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) *  6.0;
-
+        double normHeading = Math.toDegrees(heading);
+        while (Math.abs(normHeading) > 180){
+            normHeading -= Math.signum(normHeading)*360;
+        }
+        normHeading = Math.abs(90 - Math.abs(heading));
         double xErrorLeft = 0;
         double yErrorLeft = 0;
         if (Math.abs(leftSensorY) <= wallDist - 8 && Math.abs(leftSensorX) <= wallDist - 8){ //Make sure the sensor itself is not near a wall
             leftSensorX += Math.cos(heading) * leftDist;
             leftSensorY += Math.sin(heading) * leftDist;
-            if (Math.abs(Math.abs(leftSensorX)-wallDist) <= 3 ^ Math.abs(Math.abs(leftSensorY)-wallDist) <= 3){ //Check to make sure that the reading lines up with a wall & only 1 wall
+            if ((Math.abs(Math.abs(leftSensorX)-wallDist) <= 3 && normHeading >= 70) ^ (Math.abs(Math.abs(leftSensorY)-wallDist) <= 3 && normHeading <= 20)){ //Check to make sure that the reading lines up with a wall & only 1 wall
                 if (Math.abs(Math.abs(leftSensorX)-wallDist) <= 3){ //finding out which of the two walls
                     numDistLeft = Math.min(numDistLeft + 1, 6);
                     if (numDistLeft == 6) {
@@ -151,8 +155,8 @@ public class Localizer {
         if (Math.abs(rightSensorY) <= wallDist - 8 && Math.abs(rightSensorX) <= wallDist - 8){
             rightSensorX += Math.cos(heading) * rightDist;
             rightSensorY += Math.sin(heading) * rightDist;
-            if (Math.abs(Math.abs(rightSensorX)-wallDist) <= 3 ^ Math.abs(Math.abs(rightSensorY)-wallDist) <= 3){ //Check to make sure that the reading lines up with a wall & only 1 wall
-                if (Math.abs(Math.abs(rightSensorX)-wallDist) <= 3){ //finding out which of the two walls
+            if ((Math.abs(Math.abs(rightSensorX)-wallDist) <= 3 && normHeading >= 70) ^ (Math.abs(Math.abs(rightSensorY)-wallDist) <= 3 && normHeading <= 20)){ //Check to make sure that the reading lines up with a wall & only 1 wall
+                if (Math.abs(Math.abs(rightSensorX)-wallDist) <= 3){ //finding out whih of the two walls
                     numDistRight = Math.min(numDistRight + 1, 6);
                     if (numDistRight == 6) {
                         xErrorRight = wallDist * Math.signum(rightSensorX) - rightSensorX; //this can be thought of as making leftSensorX + xError (currentError) = 72 (because it is bouncing off the wall)
