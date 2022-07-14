@@ -80,11 +80,11 @@ public class SampleMecanumDrive {
 
         for (int i = 0; i < 4; i ++) {
             motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-            motorPriorities.add(new UpdatePriority(3,5));
+            motorPriorities.add(new UpdatePriority(motors.get(i),3,5));
         }
-        motorPriorities.add(new UpdatePriority(1,2));
-        motorPriorities.add(new UpdatePriority(1,3));
-        motorPriorities.add(new UpdatePriority(2,6));
+        motorPriorities.add(new UpdatePriority(motors.get(4),1,2));
+        motorPriorities.add(new UpdatePriority(motors.get(5),1,3));
+        motorPriorities.add(new UpdatePriority(new ExpansionHubMotor[]{motors.get(6),motors.get(7)},2,6));
     }
     public void setDriveMode(DcMotor.RunMode runMode){
         leftFront.setMode(runMode);
@@ -163,6 +163,11 @@ public class SampleMecanumDrive {
 
     PID turretPID = new PID(0.35,0.05,0.007);
     PID slidePID = new PID(0.2,0.05,0.001);
+
+    public void updateLoopTime(){
+        loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
+    }
+
     public void update(){
         if (loops == 0){
             turretPID.update(0);
@@ -173,9 +178,9 @@ public class SampleMecanumDrive {
         loops ++;
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
 
-        loopTime = (System.nanoTime() - loopStart) / 1000000000.0; //gets the current time since the loop began
+
+        updateLoopTime(); //gets the current time since the loop began
         TelemetryPacket packet = new TelemetryPacket();
-        packet.put("l loopSpeedBeforeMotors", loopTime * 1000);
 
         if (numMotorsUpdated == 0 || sensorLoops >= 4){
             sensorLoops = 0;
@@ -211,37 +216,38 @@ public class SampleMecanumDrive {
             sensorLoops ++;
         }
 
-        double targetLoopLength = 0.004; //Sets the target loop time in seconds
+        updateV4barAngle(loopTime);
+
+        double targetLoopLength = 0.005; //Sets the target loop time in seconds
         double bestMotorUpdate = 1;
         numMotorsUpdated = 0;
+        updateLoopTime();
+        double startMotorUpdate = loopTime;
         while (sensorLoops != 0 && bestMotorUpdate > 0 && loopTime <= targetLoopLength) { // updates the motors while still time remaining in the loop
             int bestIndex = 0;
-            bestMotorUpdate = motorPriorities.get(0).getPriority();
+            bestMotorUpdate = motorPriorities.get(0).getPriority(targetLoopLength - loopTime);
             for (int i = 1; i < motorPriorities.size(); i++) { //finding the motor that is most in need of being updated;
-                if (motorPriorities.get(i).getPriority() > bestMotorUpdate) {
+                double currentMotor = motorPriorities.get(i).getPriority(targetLoopLength - loopTime);
+                if (currentMotor > bestMotorUpdate) {
                     bestIndex = i;
-                    bestMotorUpdate = motorPriorities.get(i).getPriority();
+                    bestMotorUpdate = currentMotor;
                 }
             }
             if (bestMotorUpdate != 0) {
-                numMotorsUpdated++;
-                motors.get(bestIndex).setPower(motorPriorities.get(bestIndex).power); //setting the motor of the one that most needs it
-                if (bestIndex == motorPriorities.size() - 1) {
-                    numMotorsUpdated++;
-                    slides2.setPower(motorPriorities.get(bestIndex).power); //This deals with the case of the linked mechanism for the slides. If one gets chosen the other must also be chosen
-                }
-                motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor
+                motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor and setting the motor of the one that most needs it
+                numMotorsUpdated += motorPriorities.get(bestIndex).motor.length; //adds the number of motors updated
             }
-            loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
+            updateLoopTime();
         }
+        double totalMotorUpdateTime = loopTime - startMotorUpdate;
+        double averageTimeToUpdateMotor = totalMotorUpdateTime/Math.max((double)numMotorsUpdated,1.0);
 
         updateHub2 = false;
         loopStart = System.nanoTime();
 
-        updateV4barAngle(loopTime);
-
         packet.put("l loopSpeed", loopTime * 1000);
         packet.put("l avgLoopSpeed", (System.nanoTime() - start) / (1000000.0 * loops));
+        packet.put("l averageTimeToUpdateMotor", averageTimeToUpdateMotor);
         packet.put("l numMotorsUpdated", numMotorsUpdated);
 
         packet.put("d/p X", currentPose.getX());
@@ -596,7 +602,7 @@ public class SampleMecanumDrive {
                             && Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset)) <= 6
                             && Math.abs(t - currentV4barAngle) <= Math.toRadians(5))
                     ){slidesCase ++;}
-                    if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++; setDepositAngle(Math.toRadians(180) - effectiveDepositAngle);updateDepositAngle();} //else if
+                    if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++; setDepositAngle(Math.toRadians(180) - effectiveDepositAngle);} //else if
                     break;
                 case 4:
                     double depoAngle = Math.toRadians(180) - effectiveDepositAngle;
@@ -651,12 +657,6 @@ public class SampleMecanumDrive {
     double targetDepositAngle = 0;
     double currentV4barAngle = 0;
     double targetV4barAngle = 0;
-    public void updateDepositAngle(){
-        double angle = targetDepositAngle - currentV4barAngle;
-        double targetPos = angle * 0.215820468 + 0.21;
-        targetPos = Math.min(Math.max(targetPos,0.0),0.86);
-        servos.get(2).setPosition(targetPos);
-    }
     public void updateV4barAngle(double loopSpeed){
         currentV4barAngle += Math.signum(targetV4barAngle - currentV4barAngle) * Math.PI / 0.875 * loopSpeed; // 0.825 => 0.905
         if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(1)){
@@ -665,7 +665,11 @@ public class SampleMecanumDrive {
         double servoPos = (targetV4barAngle * -0.201172) + 0.94;
         servoPos = Math.max(Math.min(servoPos,0.94),0.108); //0.94
         servos.get(4).setPosition(servoPos);
-        updateDepositAngle();
+
+        double angle = targetDepositAngle - currentV4barAngle;
+        double targetPos = angle * 0.215820468 + 0.21;
+        targetPos = Math.min(Math.max(targetPos,0.0),0.86);
+        servos.get(2).setPosition(targetPos);
     }
     long lastLoop = System.nanoTime();
     public static PID heading = new PID(2.5,0.03,0.05);
