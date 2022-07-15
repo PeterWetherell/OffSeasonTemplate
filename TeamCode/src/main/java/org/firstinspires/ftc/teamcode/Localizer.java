@@ -48,6 +48,7 @@ public class Localizer {
         }
     }
     int numWallUpdate = 0;
+    double wallDist = 48.0;
     public void wallUpdate(double val){
         double valTouchIn = 100;
         double valTouchOut = 380;
@@ -57,16 +58,16 @@ public class Localizer {
             //6.75 represents the base and then the equation is being used to determine its actual full extent for left/right.
             double sensorX = x + Math.cos(heading) * 5.0 - Math.sin(heading) * a * Math.signum(y);
             double sensorY = y + Math.cos(heading) * a * Math.signum(y) + Math.sin(heading) * 5.0;
-            if (Math.abs(sensorX) >= 68){
+            if (Math.abs(sensorX) >= wallDist-4){
                 numWallUpdate = Math.min(numWallUpdate + 1, 10);
                 if (numWallUpdate == 10) {
-                    x += (72 * Math.signum(sensorX) - sensorX) * 0.1;
+                    x += (wallDist * Math.signum(sensorX) - sensorX) * 0.1;
                 }
             }
-            else if (Math.abs(sensorY) >= 68){
+            else if (Math.abs(sensorY) >= wallDist-4){
                 numWallUpdate = Math.min(numWallUpdate + 1, 10);
                 if (numWallUpdate == 10) {
-                    y += (72 * Math.signum(sensorY) - sensorY) * 0.1;
+                    y += (wallDist * Math.signum(sensorY) - sensorY) * 0.1;
                 }
             }
             else{
@@ -84,10 +85,13 @@ public class Localizer {
         double robotWidth = 12;
         double robotLength = 17;
 
-        if (Math.abs(currentVel.y) <= 3 && Math.abs(currentPowerVector.y) >= 0.25){
+        double speedCutoff = 3;
+        double powerCutoff = 0.25;
+        //TODO: Implement a way of making sure we are near a wall when this goes off
+        if (Math.abs(currentVel.y) <= speedCutoff && Math.abs(currentPowerVector.y) >= powerCutoff){
             lastSideWallRamSide = System.currentTimeMillis();
             if (System.currentTimeMillis() - startSideWallRamSide >= 800 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)){
-                y = (72 - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y);
+                y = (wallDist - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y);
             }
         }
         else{
@@ -96,10 +100,10 @@ public class Localizer {
             }
         }
 
-        if (Math.abs(currentVel.x) <= 3 && Math.abs(currentPowerVector.x) >= 0.25){
+        if (Math.abs(currentVel.x) <= speedCutoff && Math.abs(currentPowerVector.x) >= powerCutoff){
             lastSideWallRamFront = System.currentTimeMillis();
             if (System.currentTimeMillis() - startSideWallRamFront >= 800 && Math.signum(currentPowerVector.x) == Math.signum(currentPose.x)){
-                x = (72 - (Math.abs(Math.cos(heading)) * robotLength / 2.0 + Math.abs(Math.sin(heading)) * robotWidth / 2.0)) * Math.signum(currentPose.x);
+                x = (wallDist - (Math.abs(Math.cos(heading)) * robotLength / 2.0 + Math.abs(Math.sin(heading)) * robotWidth / 2.0)) * Math.signum(currentPose.x);
             }
         }
         else{
@@ -110,7 +114,6 @@ public class Localizer {
     }
     int numDistLeft = 0;
     int numDistRight = 0;
-    double wallDist = 48.0;
     public void distUpdate(double rightDist, double leftDist){
         double rightSensorX = x + Math.cos(heading) * 8.0 - Math.sin(heading) * -6.0;
         double rightSensorY = y + Math.sin(heading) * 8.0 + Math.cos(heading) * -6.0;
@@ -230,13 +233,16 @@ public class Localizer {
         loopTimes.add(0,loopTime);
         poseHistory.add(0,currentPose);
         updateVelocity();
-        updateStrafeHeading();
+        updateHeadingIMU();
     }
     long lastIMUCall = System.currentTimeMillis();
     Pose2d lastPose = new Pose2d(0,0,0);
     double lastImuHeading = 0;
-    public void updateStrafeHeading(){
-        //if (Math.abs(relCurrentVel.getX()) >= 6 || Math.abs(relCurrentVel.getX())/Math.max(Math.abs(relCurrentVel.getY()),0.1) >= 0.5){} //check strafing
+    public void updateHeadingIMU(){
+        //This doesn't work properly
+        //It assumes they turn exactly at the 200 ms to the heading that was changed
+        //TODO: Instead we should create an algorithm to linearly interpret heading error across those 200 ms
+        //This includes adjusting relDeltaX and relDeltaY as the robot moves to the best of our knowledge
         if (System.currentTimeMillis() - lastIMUCall >= 200){
             double deltaX = x-lastPose.x;
             double deltaY = y-lastPose.y;
