@@ -88,12 +88,13 @@ public class Localizer {
         double robotLength = 17;
 
         double speedCutoff = 3;
-        double powerCutoff = 0.25;
-        //TODO: Implement a way of making sure we are near a wall when this goes off
-        if (Math.abs(currentVel.y) <= speedCutoff && Math.abs(currentPowerVector.y) >= powerCutoff){
+        double powerCutoff = 0.35;
+
+        double robotMaxY = Math.abs(y) + (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0);
+        if (robotMaxY >= wallDist - 5 && Math.abs(currentVel.y) <= speedCutoff && Math.abs(currentPowerVector.y) >= powerCutoff){
             lastSideWallRamSide = System.currentTimeMillis();
             if (System.currentTimeMillis() - startSideWallRamSide >= 800 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)){
-                y = (wallDist - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y);
+                y += (wallDist - robotMaxY) * Math.signum(y);
             }
         }
         else{
@@ -101,11 +102,11 @@ public class Localizer {
                 startSideWallRamSide = System.currentTimeMillis();
             }
         }
-
-        if (Math.abs(currentVel.x) <= speedCutoff && Math.abs(currentPowerVector.x) >= powerCutoff){
+        double robotMaxX = Math.abs(x) + (Math.abs(Math.cos(heading)) * robotLength / 2.0 + Math.abs(Math.sin(heading)) * robotWidth / 2.0);
+        if (robotMaxX >= wallDist - 5 && Math.abs(currentVel.x) <= speedCutoff && Math.abs(currentPowerVector.x) >= powerCutoff){
             lastSideWallRamFront = System.currentTimeMillis();
             if (System.currentTimeMillis() - startSideWallRamFront >= 800 && Math.signum(currentPowerVector.x) == Math.signum(currentPose.x)){
-                x = (wallDist - (Math.abs(Math.cos(heading)) * robotLength / 2.0 + Math.abs(Math.sin(heading)) * robotWidth / 2.0)) * Math.signum(currentPose.x);
+                x += (wallDist - robotMaxX) * Math.signum(x);
             }
         }
         else{
