@@ -27,9 +27,11 @@ public class Localizer {
         this.x = x;
         this.y = y;
         this.heading += h - this.heading;
-        lastIMUCall = System.currentTimeMillis();
+        imuTimeStamp = System.currentTimeMillis();
         lastPose = new Pose2d(x,y,h);
         lastImuHeading = imu.getAngularOrientation().firstAngle;
+        relIMUHistory.clear();
+        loopIMUTimes.clear();
     }
 
     BNO055IMU imu;
@@ -215,6 +217,7 @@ public class Localizer {
         double relDeltaX = (deltaLeft*rightY - deltaRight*leftY)/(leftY-rightY);
 
         relHistory.add(0,new Pose2d(relDeltaX,relDeltaY,deltaHeading));
+        relIMUHistory.add(0,new Pose2d(relDeltaX,relDeltaY,deltaHeading));
 
 
         if (deltaHeading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
@@ -231,32 +234,51 @@ public class Localizer {
         currentPose = new Pose2d(x, y, heading);
 
         loopTimes.add(0,loopTime);
+        loopIMUTimes.add(0,loopTime);
         poseHistory.add(0,currentPose);
         updateVelocity();
         updateHeadingIMU();
     }
-    long lastIMUCall = System.currentTimeMillis();
     Pose2d lastPose = new Pose2d(0,0,0);
+    long imuTimeStamp = System.currentTimeMillis();
+    ArrayList<Pose2d> relIMUHistory = new ArrayList<Pose2d>();
+    ArrayList<Double> loopIMUTimes = new ArrayList<Double>();
     double lastImuHeading = 0;
     public void updateHeadingIMU(){
-        //This doesn't work properly
-        //It assumes they turn exactly at the 200 ms to the heading that was changed
-        //TODO: Instead we should create an algorithm to linearly interpret heading error across those 200 ms
-        //This includes adjusting relDeltaX and relDeltaY as the robot moves to the best of our knowledge
-        if (System.currentTimeMillis() - lastIMUCall >= 200){
-            double deltaX = x-lastPose.x;
-            double deltaY = y-lastPose.y;
+        if (System.currentTimeMillis() - imuTimeStamp >= 200){
             double imuHeading = imu.getAngularOrientation().firstAngle;
             double deltaHeading = (imuHeading - lastImuHeading) - (heading - lastPose.heading);
             while (Math.abs(deltaHeading) > Math.PI){
                 deltaHeading -= Math.PI * 2 * Math.signum(deltaHeading);
             }
-            x = lastPose.x + deltaX * Math.cos(deltaHeading) - deltaY * Math.sin(deltaHeading);
-            y = lastPose.y + deltaX * Math.sin(deltaHeading) + deltaY * Math.cos(deltaHeading);
-            heading += deltaHeading;
+            double sumLoopTime = 0;
+            for (int i = 0; i < loopIMUTimes.size(); i ++){
+                sumLoopTime += loopIMUTimes.get(i);
+            }
+            double backX = encoders[2].x;
+            for (int i = 0; i < loopIMUTimes.size(); i ++){
+                double relDeltaHeading = (loopIMUTimes.get(i)/sumLoopTime) * deltaHeading;
+                relIMUHistory.get(i).y -= relDeltaHeading * backX;
+                relIMUHistory.get(i).heading += relDeltaHeading;
 
-            lastIMUCall = System.currentTimeMillis();
-            lastPose = new Pose2d(x,y,heading);
+                if (relIMUHistory.get(i).heading != 0) { // this avoids the issue where deltaHeading = 0 and then it goes to undefined. This effectively does L'Hopital's
+                    double r1 = relIMUHistory.get(i).x / deltaHeading;
+                    double r2 = relIMUHistory.get(i).y / deltaHeading;
+                    relIMUHistory.get(i).x = Math.sin(relIMUHistory.get(i).heading) * r1 - (1.0 - Math.cos(relIMUHistory.get(i).heading)) * r2;
+                    relIMUHistory.get(i).y = (1.0 - Math.cos(relIMUHistory.get(i).heading)) * r1 + Math.sin(relIMUHistory.get(i).heading) * r2;
+                }
+                lastPose.x += relIMUHistory.get(i).x * Math.cos(lastPose.heading) - relIMUHistory.get(i).y * Math.sin(lastPose.heading);
+                lastPose.y += relIMUHistory.get(i).y * Math.cos(lastPose.heading) + relIMUHistory.get(i).x * Math.sin(lastPose.heading);
+
+                lastPose.heading += relIMUHistory.get(i).heading;
+            }
+            relIMUHistory.clear();
+            loopIMUTimes.clear();
+            imuTimeStamp = System.currentTimeMillis();
+            x = lastPose.x;
+            y = lastPose.y;
+            heading = lastPose.heading;
+            currentPose = new Pose2d(x,y,heading);
             lastImuHeading = imuHeading;
         }
     }
