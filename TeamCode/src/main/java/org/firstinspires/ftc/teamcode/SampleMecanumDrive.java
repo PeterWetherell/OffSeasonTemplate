@@ -21,9 +21,11 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.checkerframework.checker.units.qual.A;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.openftc.revextensions2.ExpansionHubEx;
 import org.openftc.revextensions2.ExpansionHubMotor;
 import org.openftc.revextensions2.RevBulkData;
+import org.outoftheboxrobotics.neutrinoi2c.MB1242.AsyncMB1242;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +36,6 @@ public class SampleMecanumDrive {
 
     double targetSlidesPose = 3, slidesSpeed = 1;
     double targetTurretPose = 0;
-
 
     boolean startSlides = false;
     boolean startIntake = false;
@@ -116,18 +117,26 @@ public class SampleMecanumDrive {
         duckSpin2 = hardwareMap.crservo.get("duckSpin2");
     }
 
-    public AnalogInput rightIntake, leftIntake, depositSensor, distLeft, distRight, magLeft, magRight, flex;
+    public AnalogInput rightIntake, leftIntake, depositSensor, magLeft, magRight, flex;
+
+    //    public AnalogInput distLeft, distRight;
+    public AsyncMB1242 distLeft;
+    public AsyncMB1242 distRight;
+
     public VoltageSensor batteryVoltageSensor;
     public BNO055IMU imu;
     private void initSensors(HardwareMap hardwareMap){
         rightIntake = hardwareMap.analogInput.get("rightIntake");
         leftIntake = hardwareMap.analogInput.get("leftIntake");
         depositSensor = hardwareMap.analogInput.get("depositSensor");
-        distLeft = hardwareMap.analogInput.get("distLeft");
-        distRight = hardwareMap.analogInput.get("distRight");
         magLeft = hardwareMap.analogInput.get("magLeft");
         magRight = hardwareMap.analogInput.get("magRight");
         flex = hardwareMap.analogInput.get("flex");
+
+//        distLeft = hardwareMap.analogInput.get("distLeft");
+//        distRight = hardwareMap.analogInput.get("distRight");
+        distLeft = hardwareMap.get(AsyncMB1242.class, "distLeft");
+        distRight = hardwareMap.get(AsyncMB1242.class, "distLeft");
 
         batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
 
@@ -139,7 +148,6 @@ public class SampleMecanumDrive {
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
         imu.initialize(parameters);
-
     }
 
     public Localizer localizer;
@@ -393,10 +401,14 @@ public class SampleMecanumDrive {
                     currentSlideLength = bulkData.getMotorCurrentPosition(slides2) / 25.1372713591;
                     currentSlideSpeed = bulkData.getMotorVelocity(slides2) / 25.1372713591;
                     currentTurretAngle = bulkData.getMotorCurrentPosition(turret) / 578.3213;
-                    distValLeft = bulkData.getAnalogInputValue(distLeft) / 3.2;
-                    distValRight = bulkData.getAnalogInputValue(distRight) / 3.2;
                     magValLeft = bulkData.getAnalogInputValue(magLeft);
                     magValRight = bulkData.getAnalogInputValue(magRight);
+
+//                    distValLeft = bulkData.getAnalogInputValue(distLeft) / 3.2;
+//                    distValRight = bulkData.getAnalogInputValue(distRight) / 3.2;
+
+                    distValLeft =  distLeft.getDistance(DistanceUnit.INCH);
+                    distValRight =  distRight.getDistance(DistanceUnit.INCH);
 
                     if (lastDistValLeft != distValLeft || lastDistValRight != distValRight){
                         localizer.distUpdate(distValRight,distValLeft);
