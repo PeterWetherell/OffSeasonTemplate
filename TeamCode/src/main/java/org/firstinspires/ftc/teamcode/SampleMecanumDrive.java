@@ -33,7 +33,8 @@ import java.util.List;
 public class SampleMecanumDrive {
 
     double targetSlidesPose = 3, slidesSpeed = 1;
-    double targetTurretPose = 0, turretI = 0;
+    double targetTurretPose = 0;
+
 
     boolean startSlides = false;
     boolean startIntake = false;
