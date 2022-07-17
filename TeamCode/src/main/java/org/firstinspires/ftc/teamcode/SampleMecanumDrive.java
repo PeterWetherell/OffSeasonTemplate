@@ -21,9 +21,11 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.checkerframework.checker.units.qual.A;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.openftc.revextensions2.ExpansionHubEx;
 import org.openftc.revextensions2.ExpansionHubMotor;
 import org.openftc.revextensions2.RevBulkData;
+import org.outoftheboxrobotics.neutrinoi2c.MB1242.AsyncMB1242;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +35,7 @@ import java.util.List;
 public class SampleMecanumDrive {
 
     double targetSlidesPose = 3, slidesSpeed = 1;
-    double targetTurretPose = 0, turretI = 0;
+    double targetTurretPose = 0;
 
     boolean startSlides = false;
     boolean startIntake = false;
@@ -67,8 +69,8 @@ public class SampleMecanumDrive {
         slides = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides");
         slides2 = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides2");
 
-        setDriveMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        setDriveMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        setDriveMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); // resets odo readings
+        setDriveMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER); // makes drive motors without encoder
 
         leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
         leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -115,18 +117,26 @@ public class SampleMecanumDrive {
         duckSpin2 = hardwareMap.crservo.get("duckSpin2");
     }
 
-    public AnalogInput rightIntake, leftIntake, depositSensor, distLeft, distRight, magLeft, magRight, flex;
+    public AnalogInput rightIntake, leftIntake, depositSensor, magLeft, magRight, flex;
+
+    //    public AnalogInput distLeft, distRight;
+    public AsyncMB1242 distLeft;
+    public AsyncMB1242 distRight;
+
     public VoltageSensor batteryVoltageSensor;
     public BNO055IMU imu;
     private void initSensors(HardwareMap hardwareMap){
         rightIntake = hardwareMap.analogInput.get("rightIntake");
         leftIntake = hardwareMap.analogInput.get("leftIntake");
         depositSensor = hardwareMap.analogInput.get("depositSensor");
-        distLeft = hardwareMap.analogInput.get("distLeft");
-        distRight = hardwareMap.analogInput.get("distRight");
         magLeft = hardwareMap.analogInput.get("magLeft");
         magRight = hardwareMap.analogInput.get("magRight");
         flex = hardwareMap.analogInput.get("flex");
+
+//        distLeft = hardwareMap.analogInput.get("distLeft");
+//        distRight = hardwareMap.analogInput.get("distRight");
+        distLeft = hardwareMap.get(AsyncMB1242.class, "distLeft");
+        distRight = hardwareMap.get(AsyncMB1242.class, "distLeft");
 
         batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
 
@@ -138,7 +148,6 @@ public class SampleMecanumDrive {
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
         imu.initialize(parameters);
-
     }
 
     public Localizer localizer;
@@ -151,7 +160,7 @@ public class SampleMecanumDrive {
         initSensors(hardwareMap);
         localizer = new Localizer();
         localizer.getIMU(imu);
-        r = new robotComponents(true);
+        r = new robotComponents(true); // for nice dashboard drawigngs
         dashboard = FtcDashboard.getInstance();
         dashboard.setTelemetryTransmissionInterval(25);
     }
@@ -165,7 +174,7 @@ public class SampleMecanumDrive {
     PID slidePID = new PID(0.2,0.05,0.001);
 
     public void updateLoopTime(){
-        loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
+        loopTime = (System.nanoTime() - loopStart) / 1000000000.0; // converts from nano secs to secs
     }
 
     public void update(){
@@ -178,9 +187,8 @@ public class SampleMecanumDrive {
         loops ++;
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
 
-
         updateLoopTime(); //gets the current time since the loop began
-        TelemetryPacket packet = new TelemetryPacket();
+        TelemetryPacket packet = new TelemetryPacket(); // for sending data to dashboard
 
         if (numMotorsUpdated == 0 || sensorLoops >= 4){
             sensorLoops = 0;
@@ -331,18 +339,18 @@ public class SampleMecanumDrive {
                 relCurrentVel = localizer.relCurrentVel;
                 currentVel = localizer.currentVel;
 
-                if (intakeDepositTransfer && System.currentTimeMillis() - startIntakeDepositTransfer > 100){
+                if (intakeDepositTransfer && System.currentTimeMillis() - startIntakeDepositTransfer > 100) { // 100ms backup timer for transfer
                     intakeDepositTransfer = false;
                 }
-                if (depositVal >= 15 || currentIntakeSpeed <= -18){
+                if (depositVal >= 15 || currentIntakeSpeed <= -18) { // transfer has been started
                     intakeDepositTransfer = true;
                     startIntakeDepositTransfer = System.currentTimeMillis();
                 }
 
-                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500){
+                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500) { // intake is not jammed anymore?
                     intakeHit = false;
                 }
-                if (currentIntakeSpeed <= 16){
+                if (currentIntakeSpeed <= 16){ // intake is jammed?
                     intakeHit = true;
                     startIntakeHit = System.currentTimeMillis();
                 }
@@ -371,7 +379,7 @@ public class SampleMecanumDrive {
                 }
                 numLeftIntake = Math.max(0,Math.min(5,numLeftIntake));
             }
-            catch (Exception e){
+            catch (Exception e) { // catches any errors from reading data to avoid crashing in middle of program
                 Log.e("******* Error due to ",e.getClass().getName());
                 e.printStackTrace();
                 Log.e("******* fail", "control hub failed");
@@ -392,17 +400,21 @@ public class SampleMecanumDrive {
                     currentSlideLength = bulkData.getMotorCurrentPosition(slides2) / 25.1372713591;
                     currentSlideSpeed = bulkData.getMotorVelocity(slides2) / 25.1372713591;
                     currentTurretAngle = bulkData.getMotorCurrentPosition(turret) / 578.3213;
-                    distValLeft = bulkData.getAnalogInputValue(distLeft) / 3.2;
-                    distValRight = bulkData.getAnalogInputValue(distRight) / 3.2;
                     magValLeft = bulkData.getAnalogInputValue(magLeft);
                     magValRight = bulkData.getAnalogInputValue(magRight);
+
+//                    distValLeft = bulkData.getAnalogInputValue(distLeft) / 3.2;
+//                    distValRight = bulkData.getAnalogInputValue(distRight) / 3.2;
+
+                    distValLeft =  distLeft.getDistance(DistanceUnit.INCH);
+                    distValRight =  distRight.getDistance(DistanceUnit.INCH);
 
                     if (lastDistValLeft != distValLeft || lastDistValRight != distValRight){
                         localizer.distUpdate(distValRight,distValLeft);
                     }
                     lastDistValLeft = distValLeft;
                     lastDistValRight = distValRight;
-                } catch (Exception e) {
+                } catch (Exception e) { // catches any errors from reading data in to avoid crashing program
                     Log.e("******* Error due to ", e.getClass().getName());
                     e.printStackTrace();
                     Log.e("******* fail", "expansion hub failed");

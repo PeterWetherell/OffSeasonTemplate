@@ -15,8 +15,13 @@
 apply from: '../build.common.gradle'
 apply from: '../build.dependencies.gradle'
 
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 dependencies {
     implementation project(':FtcRobotController')
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
     implementation 'org.openftc:rev-extensions-2:1.2'
+    implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.1.1'
 }
