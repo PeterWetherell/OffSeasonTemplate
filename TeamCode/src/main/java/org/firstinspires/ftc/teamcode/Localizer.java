@@ -88,15 +88,15 @@ public class Localizer {
         double speedCutoff = 3;
         double powerCutoff = 0.25;
         //TODO: Implement a way of making sure we are near a wall when this goes off
-        if (Math.abs(currentVel.y) <= speedCutoff && Math.abs(currentPowerVector.y) >= powerCutoff){
+        if (Math.abs(currentVel.y) <= speedCutoff && Math.abs(currentPowerVector.y) >= powerCutoff) { // this line basically says that if we are applying power to move in the y direction but yet, are y velocity is small then we can confirm we are against the wall
             lastSideWallRamSide = System.currentTimeMillis();
-            if (System.currentTimeMillis() - startSideWallRamSide >= 800 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)){
-                y = (wallDist - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y);
+            if (System.currentTimeMillis() - startSideWallRamSide >= 800 && Math.signum(currentPowerVector.y) == Math.signum(currentPose.y)) { // must ram wall for >= 800 ms and have currentPose and currentPowerVector y value in same direction
+                y = (wallDist - (Math.abs(Math.cos(heading)) * robotWidth / 2.0 + Math.abs(Math.sin(heading)) * robotLength / 2.0)) * Math.signum(currentPose.y); // sets robot's center y position to be against wall
             }
         }
         else{
-            if (System.currentTimeMillis() - lastSideWallRamSide >= 50) {
-                startSideWallRamSide = System.currentTimeMillis();
+            if (System.currentTimeMillis() - lastSideWallRamSide >= 50) { // wait for at least 50ms after last wall ram
+                startSideWallRamSide = System.currentTimeMillis(); // rest timer
             }
         }
 

@@ -69,8 +69,8 @@ public class SampleMecanumDrive {
         slides = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides");
         slides2 = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides2");
 
-        setDriveMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        setDriveMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        setDriveMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); // resets odo readings
+        setDriveMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER); // makes drive motors without encoder
 
         leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
         leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -160,7 +160,7 @@ public class SampleMecanumDrive {
         initSensors(hardwareMap);
         localizer = new Localizer();
         localizer.getIMU(imu);
-        r = new robotComponents(true);
+        r = new robotComponents(true); // for nice dashboard drawigngs
         dashboard = FtcDashboard.getInstance();
         dashboard.setTelemetryTransmissionInterval(25);
     }
@@ -174,7 +174,7 @@ public class SampleMecanumDrive {
     PID slidePID = new PID(0.2,0.05,0.001);
 
     public void updateLoopTime(){
-        loopTime = (System.nanoTime() - loopStart) / 1000000000.0;
+        loopTime = (System.nanoTime() - loopStart) / 1000000000.0; // converts from nano secs to secs
     }
 
     public void update(){
@@ -187,9 +187,8 @@ public class SampleMecanumDrive {
         loops ++;
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
 
-
         updateLoopTime(); //gets the current time since the loop began
-        TelemetryPacket packet = new TelemetryPacket();
+        TelemetryPacket packet = new TelemetryPacket(); // for sending data to dashboard
 
         if (numMotorsUpdated == 0 || sensorLoops >= 4){
             sensorLoops = 0;
@@ -340,18 +339,18 @@ public class SampleMecanumDrive {
                 relCurrentVel = localizer.relCurrentVel;
                 currentVel = localizer.currentVel;
 
-                if (intakeDepositTransfer && System.currentTimeMillis() - startIntakeDepositTransfer > 100){
+                if (intakeDepositTransfer && System.currentTimeMillis() - startIntakeDepositTransfer > 100) { // 100ms backup timer for transfer
                     intakeDepositTransfer = false;
                 }
-                if (depositVal >= 15 || currentIntakeSpeed <= -18){
+                if (depositVal >= 15 || currentIntakeSpeed <= -18) { // transfer has been started
                     intakeDepositTransfer = true;
                     startIntakeDepositTransfer = System.currentTimeMillis();
                 }
 
-                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500){
+                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500) { // intake is not jammed anymore?
                     intakeHit = false;
                 }
-                if (currentIntakeSpeed <= 16){
+                if (currentIntakeSpeed <= 16){ // intake is jammed?
                     intakeHit = true;
                     startIntakeHit = System.currentTimeMillis();
                 }
@@ -380,7 +379,7 @@ public class SampleMecanumDrive {
                 }
                 numLeftIntake = Math.max(0,Math.min(5,numLeftIntake));
             }
-            catch (Exception e){
+            catch (Exception e) { // catches any errors from reading data to avoid crashing in middle of program
                 Log.e("******* Error due to ",e.getClass().getName());
                 e.printStackTrace();
                 Log.e("******* fail", "control hub failed");
@@ -415,7 +414,7 @@ public class SampleMecanumDrive {
                     }
                     lastDistValLeft = distValLeft;
                     lastDistValRight = distValRight;
-                } catch (Exception e) {
+                } catch (Exception e) { // catches any errors from reading data in to avoid crashing program
                     Log.e("******* Error due to ", e.getClass().getName());
                     e.printStackTrace();
                     Log.e("******* fail", "expansion hub failed");
