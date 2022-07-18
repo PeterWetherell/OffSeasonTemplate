@@ -187,7 +187,7 @@ public class SampleMecanumDrive {
         loops ++;
         getEncoders(); //This is the one thing that is guaranteed to occur every loop because we need encoders for odo
 
-        updateLoopTime(); //gets the current time since the loop began
+        updateLoopTime(); // gets the current time since the loop began
         TelemetryPacket packet = new TelemetryPacket(); // for sending data to dashboard
 
         if (numMotorsUpdated == 0 || sensorLoops >= 4){
@@ -327,7 +327,7 @@ public class SampleMecanumDrive {
                 localizer.updateEncoders(encoders);
                 localizer.update();
 
-                currentIntakeSpeed = ((double) bulkData.getMotorVelocity(leftBack)) / (((1.0+(46.0/11.0)) * 28.0) / (26.0/19.0));
+                currentIntakeSpeed = ((double) bulkData.getMotorVelocity(leftBack)) / (((1.0+(46.0/11.0)) * 28.0) / (26.0/19.0)); // rpm of intake
                 rightIntakeVal = bulkData.getAnalogInputValue(rightIntake);
                 leftIntakeVal = bulkData.getAnalogInputValue(leftIntake);
                 depositVal = bulkData.getAnalogInputValue(depositSensor);
@@ -347,25 +347,25 @@ public class SampleMecanumDrive {
                     startIntakeDepositTransfer = System.currentTimeMillis();
                 }
 
-                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500) { // intake is not jammed anymore?
+                if (intakeHit && System.currentTimeMillis() - startIntakeHit > 500) { // resets after 500ms
                     intakeHit = false;
                 }
-                if (currentIntakeSpeed <= 16){ // intake is jammed?
+                if (currentIntakeSpeed <= 16){ // intake surgical tubing has slowed down after touching freight
                     intakeHit = true;
                     startIntakeHit = System.currentTimeMillis();
                 }
 
-                if (rightIntakeVal >= intakeMinValRight) {
+                if (rightIntakeVal >= intakeMinValRight) { // freight detected in intake
                     numRightIntake ++;
                     numZeroRight = 0;
                 }
-                else{
+                else { // freight not being detected in intake
                     numZeroRight ++;
-                    if (numZeroRight >= 3){
+                    if (numZeroRight >= 3) { // waits for three loops before decreasing number
                         numRightIntake --;
                     }
                 }
-                numRightIntake = Math.max(0,Math.min(5,numRightIntake));
+                numRightIntake = Math.max(0,Math.min(5,numRightIntake)); // numRightIntake must be between 0 and 5.
 
                 if (leftIntakeVal >= intakeMinValLeft) {
                     numLeftIntake ++;
