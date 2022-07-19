@@ -119,9 +119,7 @@ public class SampleMecanumDrive {
 
     public AnalogInput rightIntake, leftIntake, depositSensor, magLeft, magRight, flex;
 
-    //    public AnalogInput distLeft, distRight;
-    public AsyncMB1242 distLeft;
-    public AsyncMB1242 distRight;
+    public AnalogInput distLeft, distRight;
 
     public VoltageSensor batteryVoltageSensor;
     public BNO055IMU imu;
@@ -133,10 +131,8 @@ public class SampleMecanumDrive {
         magRight = hardwareMap.analogInput.get("magRight");
         flex = hardwareMap.analogInput.get("flex");
 
-//        distLeft = hardwareMap.analogInput.get("distLeft");
-//        distRight = hardwareMap.analogInput.get("distRight");
-        distLeft = hardwareMap.get(AsyncMB1242.class, "distLeft");
-        distRight = hardwareMap.get(AsyncMB1242.class, "distLeft");
+        distLeft = hardwareMap.analogInput.get("distLeft");
+        distRight = hardwareMap.analogInput.get("distRight");
 
         batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
 
@@ -403,11 +399,8 @@ public class SampleMecanumDrive {
                     magValLeft = bulkData.getAnalogInputValue(magLeft);
                     magValRight = bulkData.getAnalogInputValue(magRight);
 
-//                    distValLeft = bulkData.getAnalogInputValue(distLeft) / 3.2;
-//                    distValRight = bulkData.getAnalogInputValue(distRight) / 3.2;
-
-                    distValLeft =  distLeft.getDistance(DistanceUnit.INCH);
-                    distValRight =  distRight.getDistance(DistanceUnit.INCH);
+                    distValLeft = bulkData.getAnalogInputValue(distLeft) / 3.2;
+                    distValRight = bulkData.getAnalogInputValue(distRight) / 3.2;
 
                     if (lastDistValLeft != distValLeft || lastDistValRight != distValRight){
                         localizer.distUpdate(distValRight,distValLeft);
