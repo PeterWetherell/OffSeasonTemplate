@@ -12,6 +12,15 @@ public class Pose2d {
         this.y = y;
         this.heading = heading;
     }
+    public Pose2d (Pose2d pose2d, double headingOffset, double radius, double speed){
+        this.x = pose2d.x;
+        this.y = pose2d.y;
+        this.heading = pose2d.heading;
+        this.headingOffset = headingOffset;
+        this.radius = radius;
+        this.speed = speed;
+
+    }
     public Pose2d (double x, double y, double heading, double headingOffset, double radius, double speed){
         this.x = x;
         this.y = y;

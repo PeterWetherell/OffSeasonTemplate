@@ -274,7 +274,7 @@ public class SampleMecanumDrive {
 
         if (target != null) {
             packet.put("e relXError", (target.x - currentPose.x) * Math.cos(currentPose.heading) - (target.y - currentPose.y) * Math.sin(currentPose.heading));
-            packet.put("e relYError", (target.x - currentPose.x) * Math.sin(currentPose.heading) + (target.y - currentPose.y) * Math.cos(currentPose.heading));
+            packet.put("e relYError", (target.x - currentPose.x) * Math.cos(currentPose.heading) - (target.y - currentPose.y) * Math.sin(currentPose.heading));
             double headingError = (target.heading + target.headingOffset) - currentPose.heading;
             while (headingError >= Math.PI) {
                 headingError -= 2 * Math.PI;
@@ -297,6 +297,11 @@ public class SampleMecanumDrive {
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
         fieldOverlay.strokeCircle(localizer.rightSensor.x,localizer.rightSensor.y, 2);
         dashboard.sendTelemetryPacket(packet);
+    }
+
+    public Pose2d getRelError(Pose2d targetPoint){
+        return new Pose2d((targetPoint.x - currentPose.x) * Math.cos(currentPose.heading) - (targetPoint.y - currentPose.y) * Math.sin(currentPose.heading),
+                (targetPoint.x - currentPose.x) * Math.cos(currentPose.heading) - (targetPoint.y - currentPose.y) * Math.sin(currentPose.heading));
     }
 
     int rightIntakeVal = 0, leftIntakeVal = 0, depositVal = 0, flexSensorVal = 0;
@@ -429,7 +434,7 @@ public class SampleMecanumDrive {
     public double rightIntakeDrop = 0.948;
     public double rightIntakeRaise = 0.279;
     public double rightIntakeMid = 0.356;
-    double intakeTurretInterfaceHeading = Math.toRadians(57.5);
+    public double intakeTurretInterfaceHeading = Math.toRadians(57.5);
     public static double depositInterfaceAngle = 0.8;
     public static double v4barInterfaceAngle = 0.15;
     long transferTime = System.currentTimeMillis();
@@ -675,6 +680,124 @@ public class SampleMecanumDrive {
         double targetPos = angle * 0.215820468 + 0.21;
         targetPos = Math.min(Math.max(targetPos,0.0),0.86);
         servos.get(2).setPosition(targetPos);
+    }
+    public void depositAtPoint(LinearOpMode opMode, Pose2d end){
+        target = new Pose2d(end,0,2,0);
+        double side = Math.signum(end.y);
+        while (opMode.opModeIsActive() && slidesCase <= 4) {
+            startDeposit(new Pose2d(currentPose.getX(),currentPose.getY(),currentPose.getHeading()), new Pose2d(-13.0, 24.0 * side),13.5,3);
+            deposit();
+            update();
+            Pose2d error = getRelError(end);
+            double a = 0.10 * side; //0.15
+            if (Math.abs(error.getY()) <= 0.5 || slidesCase == 4){ //0.5
+                error = new Pose2d(error.getX(), 0, error.getHeading());
+                a *= 3.5;
+            }
+            if (slidesCase == 4){
+                startIntake(side == -1);
+            }
+            error.heading = 0 - currentPose.heading;
+
+            double f = error.x * 0.2;
+            double l = error.y * 0.2;
+            double t = Math.toDegrees(error.heading) * 0.04;
+            pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
+        }
+        target = null;
+    }
+
+    public void intakeMineral(LinearOpMode opMode, double power, long maxTime, boolean goBackIfStall){
+        long startingTime = System.currentTimeMillis();
+        double maxPower = power;
+        Pose2d lastPose = currentPose;
+        Long lastGoodIntake = System.currentTimeMillis();
+        Long stall = System.currentTimeMillis();
+        Long noStall = System.currentTimeMillis();
+        Long a = System.currentTimeMillis();
+        boolean b = true;
+        boolean first = true;
+        boolean c = true;
+        double kI = 0;
+        double side = Math.signum(currentPose.y);
+        while(opMode.opModeIsActive() && intakeCase <= 2 && a-startingTime <= maxTime){
+            double currentPower = maxPower;
+            double sidePower = 0;
+            a = System.currentTimeMillis();
+            if (a - start >= 150 && Math.abs(relCurrentVel.getX()) <= 2 && goBackIfStall){
+                if (first && a - lastGoodIntake >= 300) {
+                    first = false;
+                    maxTime += 500;
+                    long goBack = System.currentTimeMillis();
+                    while (opMode.opModeIsActive() && intakeCase <= 2 && System.currentTimeMillis()-goBack <= 500){
+                        update();
+                        pinMotorPowers(-0.2,-0.2,-0.2,-0.2);
+                    }
+                }
+            }
+            else{
+                lastGoodIntake = a;
+                lastPose = currentPose;
+            }
+
+            if (Math.abs(currentIntakeSpeed) <= 3 && a - noStall >= 200 && c){
+                motorPriorities.get(4).setTargetPower(transfer1Power);
+                stall = a;
+                c = false;
+                first = false;
+                maxTime += 500;
+                while (opMode.opModeIsActive() && System.currentTimeMillis() - a <= 100){
+                    update();
+                }
+                motorPriorities.get(4).setTargetPower(intakePower);
+                Pose2d q = new Pose2d(lastPose.getX() - 2, lastPose.getY() - 4 * side, lastPose.getHeading() - Math.toRadians(8 * side));
+                driveToPoint(opMode, q, q, true, 1, 1000, false);
+            }
+
+            if (a - stall >= 100 && !c){
+                motorPriorities.get(4).setTargetPower(intakePower);
+                c = true;
+                noStall = a;
+            }
+
+
+            double turn = 0;
+            double targetSpeed = power * 30;
+            double currentSpeed = Math.abs(relCurrentVel.getX());
+            double speedError = targetSpeed-currentSpeed;
+            double kP = speedError * 0.02;
+            kI += speedError * loopTime * 0.0005;
+            double multiplier = Math.min(1.0/(Math.abs(currentPower) + Math.abs(turn) + Math.abs(sidePower)),1);
+            double f = kP + kI + currentPower * 0.75;
+            pinMotorPowers((f+turn-sidePower)*multiplier,(f+turn+sidePower)*multiplier,(f-turn-sidePower)*multiplier,(f-turn+sidePower)*multiplier);
+            update();
+        }
+        motorPriorities.get(4).setTargetPower(-1);
+        pinMotorPowers(0,0,0,0);
+    }
+
+    public void driveToPoint(LinearOpMode opMode, Pose2d target, Pose2d target2, boolean intake, double error, long maxTime, boolean forward){
+        this.target = new Pose2d(target,0,2,0);
+        long startH = System.currentTimeMillis();
+        update();
+        boolean x = (Math.max(target.getX(),target2.getX()) + error > currentPose.getX() && Math.min(target.getX(),target2.getX()) - error < currentPose.getX());
+        boolean y = (Math.max(target.getY(),target2.getY()) + error > currentPose.getY() && Math.min(target.getY(),target2.getY()) - error < currentPose.getY());
+        while (
+                opMode.opModeIsActive() && (!forward || currentPose.getX() <= target.getX() - error)
+                        && !(x && y &&  Math.abs(currentPose.getHeading() - target.getHeading()) < Math.toRadians(error * 2))
+                        && (((intakeCase <= 2 || intakeCase == 8) || currentPose.getX() <= 38) || !intake) && System.currentTimeMillis() - startH < maxTime //39
+        ) {
+            update();
+            x = (Math.max(target.getX(),target2.getX()) + error > currentPose.getX() && Math.min(target.getX(),target2.getX()) - error < currentPose.getX());
+            y = (Math.max(target.getY(),target2.getY()) + error > currentPose.getY() && Math.min(target.getY(),target2.getY()) - error < currentPose.getY());
+            Pose2d relError = getRelError(target);
+            relError.heading = target.heading - currentPose.heading;
+            double f = (Math.min(Math.abs(relError.x),5) * 0.1 + 0.20) * Math.signum(relError.x);
+            double l = (Math.min(Math.abs(relError.y),5) * 0.1 + 0.20) * Math.signum(relError.y);
+            double t = Math.toDegrees(relError.heading) * 0.04;
+            pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
+        }
+        this.target = null;
     }
     long lastLoop = System.nanoTime();
     public static PID heading = new PID(2.5,0.03,0.05);
