@@ -5,7 +5,6 @@ import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -15,12 +14,10 @@ import org.firstinspires.ftc.teamcode.Component;
 import org.firstinspires.ftc.teamcode.Encoder;
 import org.firstinspires.ftc.teamcode.Point;
 import org.firstinspires.ftc.teamcode.Pose2d;
-import org.firstinspires.ftc.teamcode.robotComponents;
+import org.firstinspires.ftc.teamcode.RobotComponents;
 import org.openftc.revextensions2.ExpansionHubEx;
 import org.openftc.revextensions2.ExpansionHubMotor;
 import org.openftc.revextensions2.RevBulkData;
-
-import java.util.List;
 
 @TeleOp
 @Config
@@ -99,10 +96,10 @@ public class EncoderLocalizationTester extends LinearOpMode {
             }
             lastHeading = heading;
 
-            drawRobot(fieldOverlay,new robotComponents(true, "#0275D8"),poseBlock[0]); //blue 0,2
-            drawRobot(fieldOverlay,new robotComponents(true, "#5CB85C"),poseBlock[1]); //green 1,2
-            drawRobot(fieldOverlay,new robotComponents(true, "#F0AD4E"),poseBlock[2]); //orange 0,3
-            drawRobot(fieldOverlay,new robotComponents(true, "#D9534F"),poseBlock[3]); //red 1,3
+            drawRobot(fieldOverlay,new RobotComponents(true, "#0275D8"),poseBlock[0]); //blue 0,2
+            drawRobot(fieldOverlay,new RobotComponents(true, "#5CB85C"),poseBlock[1]); //green 1,2
+            drawRobot(fieldOverlay,new RobotComponents(true, "#F0AD4E"),poseBlock[2]); //orange 0,3
+            drawRobot(fieldOverlay,new RobotComponents(true, "#D9534F"),poseBlock[3]); //red 1,3
 
             dashboard.sendTelemetryPacket(packet);
         }
@@ -143,7 +140,7 @@ public class EncoderLocalizationTester extends LinearOpMode {
         rightBack.setMode(runMode);
         rightFront.setMode(runMode);
     }
-    public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
+    public void drawRobot(Canvas fieldOverlay, RobotComponents r, Pose2d poseEstimate){
         for (Component c : r.components){
             fieldOverlay.setStrokeWidth(c.lineRadius);
             fieldOverlay.setStroke(c.color);

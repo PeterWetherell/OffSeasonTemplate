@@ -7,25 +7,18 @@ import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.PIDCoefficients;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
-import org.checkerframework.checker.units.qual.A;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.openftc.revextensions2.ExpansionHubEx;
 import org.openftc.revextensions2.ExpansionHubMotor;
 import org.openftc.revextensions2.RevBulkData;
-import org.outoftheboxrobotics.neutrinoi2c.MB1242.AsyncMB1242;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,30 +56,31 @@ public class SampleMecanumDrive {
         rightBack = (ExpansionHubMotor) hardwareMap.dcMotor.get("rr");
         rightFront = (ExpansionHubMotor) hardwareMap.dcMotor.get("rf");
 
-        expansionHub2 = hardwareMap.get(ExpansionHubEx.class, "Expansion Hub 2");
-        intake = (ExpansionHubMotor) hardwareMap.dcMotor.get("intake");
-        turret = (ExpansionHubMotor) hardwareMap.dcMotor.get("turret");
-        slides = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides");
-        slides2 = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides2");
+//        expansionHub2 = hardwareMap.get(ExpansionHubEx.class, "Expansion Hub 2");
+//        intake = (ExpansionHubMotor) hardwareMap.dcMotor.get("intake");
+//        turret = (ExpansionHubMotor) hardwareMap.dcMotor.get("turret");
+//        slides = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides");
+//        slides2 = (ExpansionHubMotor) hardwareMap.dcMotor.get("slides2");
 
         setDriveMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); // resets odo readings
         setDriveMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER); // makes drive motors without encoder
 
         leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
         leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
-        slides.setDirection(DcMotorSimple.Direction.REVERSE);
-        slides2.setDirection(DcMotorSimple.Direction.REVERSE);
-        turret.setDirection(DcMotorSimple.Direction.REVERSE);
+//        slides.setDirection(DcMotorSimple.Direction.REVERSE);
+//        slides2.setDirection(DcMotorSimple.Direction.REVERSE);
+//        turret.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2);
+//        motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront, intake, turret, slides, slides2);
+        motors = Arrays.asList(leftFront, leftBack, rightBack, rightFront);
 
         for (int i = 0; i < 4; i ++) {
             motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             motorPriorities.add(new UpdatePriority(motors.get(i),3,5));
         }
-        motorPriorities.add(new UpdatePriority(motors.get(4),1,2));
-        motorPriorities.add(new UpdatePriority(motors.get(5),1,3));
-        motorPriorities.add(new UpdatePriority(new ExpansionHubMotor[]{motors.get(6),motors.get(7)},2,6));
+//        motorPriorities.add(new UpdatePriority(motors.get(4),1,2));
+//        motorPriorities.add(new UpdatePriority(motors.get(5),1,3));
+//        motorPriorities.add(new UpdatePriority(new ExpansionHubMotor[]{motors.get(6),motors.get(7)},2,6));
     }
     public void setDriveMode(DcMotor.RunMode runMode){
         leftFront.setMode(runMode);
@@ -124,21 +118,21 @@ public class SampleMecanumDrive {
     public VoltageSensor batteryVoltageSensor;
     public BNO055IMU imu;
     private void initSensors(HardwareMap hardwareMap){
-        rightIntake = hardwareMap.analogInput.get("rightIntake");
-        leftIntake = hardwareMap.analogInput.get("leftIntake");
-        depositSensor = hardwareMap.analogInput.get("depositSensor");
-        magLeft = hardwareMap.analogInput.get("magLeft");
-        magRight = hardwareMap.analogInput.get("magRight");
-        flex = hardwareMap.analogInput.get("flex");
-
-        distLeft = hardwareMap.analogInput.get("distLeft");
-        distRight = hardwareMap.analogInput.get("distRight");
-
-        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
-
-        for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
-            module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        }
+//        rightIntake = hardwareMap.analogInput.get("rightIntake");
+//        leftIntake = hardwareMap.analogInput.get("leftIntake");
+//        depositSensor = hardwareMap.analogInput.get("depositSensor");
+//        magLeft = hardwareMap.analogInput.get("magLeft");
+//        magRight = hardwareMap.analogInput.get("magRight");
+//        flex = hardwareMap.analogInput.get("flex");
+//
+//        distLeft = hardwareMap.analogInput.get("distLeft");
+//        distRight = hardwareMap.analogInput.get("distRight");
+//
+//        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
+//
+//        for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
+//            module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+//        }
 
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
@@ -147,16 +141,16 @@ public class SampleMecanumDrive {
     }
 
     public Localizer localizer;
-    robotComponents r;
+    RobotComponents robotComponents;
     private final FtcDashboard dashboard;
     public SampleMecanumDrive(HardwareMap hardwareMap){
         encoders = new int[3];
-        initServos(hardwareMap);
-        initMotors(hardwareMap);
+//        initServos(hardwareMap);
         initSensors(hardwareMap);
+        initMotors(hardwareMap);
         localizer = new Localizer();
         localizer.getIMU(imu);
-        r = new robotComponents(true); // for nice dashboard drawigngs
+        robotComponents = new RobotComponents(true); // for nice dashboard drawigngs
         dashboard = FtcDashboard.getInstance();
         dashboard.setTelemetryTransmissionInterval(25);
     }
@@ -186,7 +180,7 @@ public class SampleMecanumDrive {
         updateLoopTime(); // gets the current time since the loop began
         TelemetryPacket packet = new TelemetryPacket(); // for sending data to dashboard
 
-        if (numMotorsUpdated == 0 || sensorLoops >= 4){
+        if (numMotorsUpdated == 0 || sensorLoops >= 4) { // motors have nothing to do or it's been 5 loops
             sensorLoops = 0;
             updateHub2();
             updateIntake();
@@ -196,25 +190,32 @@ public class SampleMecanumDrive {
             motorPriorities.get(5).setTargetPower(turretPID.update(error));
 
             error = targetSlidesPose - getSlideLength();
-            double powerSlides;
-            if (Math.abs(error) <= 3){
-                if (Math.abs(error) >= 0.25){
+
+            // Slides PID don't matter unless it is between 3 and 0.25 inches of error
+            double powerSlides = 0;
+            if (Math.abs(error) <= 3) {
+                if (Math.abs(error) >= 0.25) {
                     powerSlides = slidePID.update(error);
                 }
-                else{
+                else {
+                    // need to update the PID so the PID knows loops are occurring and I term doesn't get huge
                     powerSlides = slidePID.update(0);
                 }
             }
             else {
                 slidePID.update(0);
                 slidePID.resetIntegral();
-                powerSlides = -0.2;
+
                 if (error >= 3){
                     powerSlides = slidesSpeed;
                 }
             }
-            motorPriorities.get(6).setTargetPower(powerSlides);
 
+            if(error <= -3) {
+                powerSlides = -0.2; // this will only trigger between -3 and -infinity.
+            }
+
+            motorPriorities.get(6).setTargetPower(powerSlides);
         }
         else {
             sensorLoops ++;
@@ -222,7 +223,7 @@ public class SampleMecanumDrive {
 
         updateV4barAngle(loopTime);
 
-        double targetLoopLength = 0.005; //Sets the target loop time in seconds
+        double targetLoopLength = 0.010; //Sets the target loop time in seconds
         double bestMotorUpdate = 1;
         numMotorsUpdated = 0;
         updateLoopTime();
@@ -230,6 +231,8 @@ public class SampleMecanumDrive {
         while (sensorLoops != 0 && bestMotorUpdate > 0 && loopTime <= targetLoopLength) { // updates the motors while still time remaining in the loop
             int bestIndex = 0;
             bestMotorUpdate = motorPriorities.get(0).getPriority(targetLoopLength - loopTime);
+
+            // finds motor that needs updating the most
             for (int i = 1; i < motorPriorities.size(); i++) { //finding the motor that is most in need of being updated;
                 double currentMotor = motorPriorities.get(i).getPriority(targetLoopLength - loopTime);
                 if (currentMotor > bestMotorUpdate) {
@@ -237,16 +240,16 @@ public class SampleMecanumDrive {
                     bestMotorUpdate = currentMotor;
                 }
             }
-            if (bestMotorUpdate != 0) {
-                motorPriorities.get(bestIndex).update(); //Resetting the motor priority so that it knows that it updated the motor and setting the motor of the one that most needs it
+            if (bestMotorUpdate != 0) { // priority # of motor needing update the most
+                motorPriorities.get(bestIndex).update(); // Resetting the motor priority so that it knows that it updated the motor and setting the motor of the one that most needs it
                 numMotorsUpdated += motorPriorities.get(bestIndex).motor.length; //adds the number of motors updated
             }
             updateLoopTime();
         }
-        double totalMotorUpdateTime = loopTime - startMotorUpdate;
-        double averageTimeToUpdateMotor = totalMotorUpdateTime/Math.max((double)numMotorsUpdated,1.0);
+        double totalMotorUpdateTime = loopTime - startMotorUpdate; // total time to update all the motors
+        double averageTimeToUpdateMotor = totalMotorUpdateTime/Math.max((double)numMotorsUpdated,1.0); // time to update 1 motor, min must equal 1 so no divide by 0 error.
 
-        updateHub2 = false;
+        updateHub2 = false; // sets to false, we've already gotten sensor data from hub
         loopStart = System.nanoTime();
 
         packet.put("l loopSpeed", loopTime * 1000);
@@ -291,7 +294,7 @@ public class SampleMecanumDrive {
             fieldOverlay.setStroke("#00FF00");
             fieldOverlay.strokeCircle(target.x, target.y, 2);
         }
-        drawRobot(fieldOverlay,r,currentPose);
+        drawRobot(fieldOverlay, robotComponents, currentPose);
         //drawRobot(fieldOverlay,new robotComponents(true, "#FF69B4"),new Pose2d(localizer.xButNeg,localizer.yButNeg,localizer.heading));
         fieldOverlay.setStroke("#FF0000");
         fieldOverlay.strokeCircle(localizer.leftSensor.x,localizer.leftSensor.y, 2);
@@ -387,7 +390,7 @@ public class SampleMecanumDrive {
     double currentTurretAngle = 0;
     double distValLeft = 0, distValRight = 0;int magValLeft = 0, magValRight = 0;
     double lastDistValLeft = 0, lastDistValRight = 0;
-    public void updateHub2(){
+    public void updateHub2() {
         if (!updateHub2) {
             updateHub2 = true;
             bulkData = expansionHub2.getBulkInputData();
@@ -436,6 +439,17 @@ public class SampleMecanumDrive {
     public int intakeLiftDelay = 100;
     public double transfer1Power = 1.0;
     public double returnSlideLength = 0.35;
+
+    // 0 idle
+    // 1 drop intake
+    // 2 waiting for freight in intake
+    // 3 lift intake
+    // 4 turret in right position
+    // 5 slides in right position
+    // 6 hard transfer (fast)
+    // 7 slow transfer (slow)
+    // 8 reset intake and wait for slides to reset and then go to idle
+
     public void updateIntake(){
         if (startIntake && intakeCase == 0){
             intakeCase = 1;
@@ -456,13 +470,13 @@ public class SampleMecanumDrive {
                 setSlidesLength(returnSlideLength + 2.5, 0.4);
             }
             if (intakeCase == 0){
-                if (currentIntake == 1){
+                if (currentIntake == 1) {
                     servos.get(1).setPosition(leftIntakeRaise);
                 }
                 else {
                     servos.get(1).setPosition(leftIntakeMid);
                 }
-                if (currentIntake == -1){
+                if (currentIntake == -1) {
                     servos.get(0).setPosition(rightIntakeRaise);
                 }
                 else {
@@ -492,7 +506,7 @@ public class SampleMecanumDrive {
         switch (a) {
             case 1: case 2:
                 motorPriorities.get(4).setTargetPower(0.3);
-                if (a == 2){
+                if (a == 2) {
                     motorPriorities.get(4).setTargetPower(intakePower);
                 }
                 if (intakeCase == 1 && System.currentTimeMillis() - intakeTime >= dropIntakeTime){intakeCase ++;}// waiting for the servo to drop
@@ -534,6 +548,18 @@ public class SampleMecanumDrive {
     boolean firstSlide = false;
     public int openDepositTime = 250;
     public int effectiveDepositTime = openDepositTime;
+
+    // 0 idle
+    // 1 shared
+    // 2 turret, slides, v4bar are all correct length
+    // 3 deposit has been triggered
+    // 4 certain amount of time has passed such that the freight has come out of the deposit
+    // 5 moves v4bar for 250 ms
+    // 6 slides return
+    // 7 turret is correct
+    // 8 slides are fully all the way in
+    // 9 reset everything and go to idle
+
     public void updateSlides(){
         if (startSlides && slidesCase == 0){
             slidesCase = 1;
@@ -662,13 +688,16 @@ public class SampleMecanumDrive {
     double targetDepositAngle = 0;
     double currentV4barAngle = 0;
     double targetV4barAngle = 0;
-    public void updateV4barAngle(double loopSpeed){
+    public void updateV4barAngle(double loopSpeed) {
+        // direction * speed (180 degrees / 0.875 secs) * loopSpeed (secs) = angle (degrees)
+        // this determines how much the servo has moved in one loop if the servo is going full speed
         currentV4barAngle += Math.signum(targetV4barAngle - currentV4barAngle) * Math.PI / 0.875 * loopSpeed; // 0.825 => 0.905
         if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(1)){
             currentV4barAngle = targetV4barAngle;
         }
-        double servoPos = (targetV4barAngle * -0.201172) + 0.94;
-        servoPos = Math.max(Math.min(servoPos,0.94),0.108); //0.94
+        // coverts angle to servoPos
+        double servoPos = (targetV4barAngle * -0.201172) + 0.94; // 0.94 is servo position when v4bar is at 0 angle
+        servoPos = Math.max(Math.min(servoPos,0.94),0.108); // physical limits of servo
         servos.get(4).setPosition(servoPos);
 
         double angle = targetDepositAngle - currentV4barAngle;
@@ -743,7 +772,6 @@ public class SampleMecanumDrive {
             f += x.update(errorX);
             l += y.update(errorY);
 
-
             pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
         }
         pinMotorPowers(0,0,0,0);
@@ -761,14 +789,14 @@ public class SampleMecanumDrive {
     public void setV4barOrientation(double targetV4barOrientation){
         targetV4barAngle = targetV4barOrientation;
     }
-    public void setMotorPowers(double v, double v1, double v2, double v3) {
+    public void setMotorPowers(double v, double v1, double v2, double v3) { // set motor power (only use in test programs)
         localizer.updatePowerVector(new double[]{v,v1,v2,v3});
         leftFront.setPower(v);
         leftBack.setPower(v1);
         rightBack.setPower(v2);
         rightFront.setPower(v3);
     }
-    public void pinMotorPowers (double v, double v1, double v2, double v3) {
+    public void pinMotorPowers (double v, double v1, double v2, double v3) { // sets motor priorities (use in actual programs for comp)
         localizer.updatePowerVector(new double[]{v,v1,v2,v3});
         motorPriorities.get(0).setTargetPower(v);
         motorPriorities.get(1).setTargetPower(v1);
@@ -860,7 +888,7 @@ public class SampleMecanumDrive {
         deposit = true;
         depositDelay = System.currentTimeMillis();
     }
-    public void drawRobot(Canvas fieldOverlay, robotComponents r, Pose2d poseEstimate){
+    public void drawRobot(Canvas fieldOverlay, RobotComponents r, Pose2d poseEstimate){
         for (Component c : r.components){
             fieldOverlay.setStrokeWidth(c.lineRadius);
             fieldOverlay.setStroke(c.color);
