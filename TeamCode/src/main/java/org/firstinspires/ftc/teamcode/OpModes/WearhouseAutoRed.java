@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.teamcode.Pose2d;
 import org.firstinspires.ftc.teamcode.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.Trajectory;
+import org.firstinspires.ftc.teamcode.TrajectoryPeice;
 
 /*
  * This is an example of a more complex path to really test the tuning.
@@ -75,6 +76,13 @@ public class WearhouseAutoRed extends LinearOpMode {
             drive.intakeCase = 0;
         }
 
+        while (opModeIsActive()){
+
+        }
+        long opModeEnded = System.currentTimeMillis();
+        while (System.currentTimeMillis()-opModeEnded >= 500){
+
+        }
         //driveToPoint(new Pose2d(40, endPoint.getY(), 0),new Pose2d(72, 24, 0), false, 1, 0.85, 1000, 13, true,100);
         drive.setMotorPowers( 0.2, 0.2, 0.2, 0.2);
         drive.slides.setPower(0);
@@ -89,16 +97,16 @@ public class WearhouseAutoRed extends LinearOpMode {
         double y = 71.25 * Math.signum(endPoint.getY()) - Math.sin(angle) * -8.0 - Math.cos(angle) * 6.0 * side;
         if (angle != 0) {
             drive.followTrajectory(this,
-                    new Trajectory(new Pose2d(drive.currentPose, 0, 5, 0.5), true)
-                            .addLine(new Pose2d(x - 5, endPoint.y, 0, 0, 5, 0.95))
-                            .addLine(new Pose2d(x, y, angle, 0, 4, 0.6))
+                    new Trajectory(new TrajectoryPeice(drive.currentPose, 0, 5, 0.5), true)
+                            .addLine(new TrajectoryPeice(new Pose2d(x - 5, endPoint.y, 0), 0, 5, 0.95))
+                            .addLine(new TrajectoryPeice(new Pose2d(x, y, angle), 0, 4, 0.6))
                             .end()
             );
         }
         else{
             drive.followTrajectory(this,
-                    new Trajectory(new Pose2d(drive.currentPose, 0, 5, 0.5), true)
-                            .addLine(new Pose2d(x, endPoint.y, 0, 0, 5, 0.95))
+                    new Trajectory(new TrajectoryPeice(drive.currentPose, 0, 5, 0.5), true)
+                            .addLine(new TrajectoryPeice(new Pose2d(x, endPoint.y, 0), 0, 5, 0.95))
                             .end()
             );
             int k = 6;
@@ -126,9 +134,9 @@ public class WearhouseAutoRed extends LinearOpMode {
         Pose2d newEnd = new Pose2d(endPoint.getX() + offset, endPoint.getY(), endPoint.getHeading());
         drive.startDeposit(endPoint, new Pose2d(-13, 24.0 * Math.signum(endPoint.getY())),13.5,3);
         drive.followTrajectory(this,
-                new Trajectory(new Pose2d(drive.currentPose, 0, 5, 0.5), true)
-                        .addLine(new Pose2d(36.5, newEnd.getY() + side * 0.2, 0, 0, 5, 0.85))
-                        .addLine(new Pose2d(newEnd.getX() + 3.5,newEnd.getY() + 0.25 * side, 0, 0, 4, 0.6))
+                new Trajectory(new TrajectoryPeice(drive.currentPose, 0, 5, 0.5), true)
+                        .addLine(new TrajectoryPeice(new Pose2d(36.5, newEnd.getY() + side * 0.2, 0), 0, 5, 0.85))
+                        .addLine(new TrajectoryPeice(new Pose2d(newEnd.getX() + 3.5,newEnd.getY() + 0.25 * side, 0), 0, 4, 0.6))
                         .end()
         );
         drive.depositAtPoint(this, newEnd);

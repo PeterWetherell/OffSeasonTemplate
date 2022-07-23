@@ -19,4 +19,11 @@ public class Component {
         p = new ArrayList<Point>();
         color = "#000000";
     }
+    public Component(double Radius,Point point){
+        radius = Radius;
+        lineRadius = 1;
+        p = new ArrayList<Point>();
+        p.add(point);
+        color = "#000000";
+    }
 }

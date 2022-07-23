@@ -163,7 +163,7 @@ public class SampleMecanumDrive {
     int loops = 0;
     int sensorLoops = 0;
     int numMotorsUpdated = 0;
-    public Pose2d target = null;
+    public TrajectoryPeice target = null;
     boolean updateHub2 = false;
 
     PID turretPID = new PID(0.35,0.05,0.007);
@@ -682,7 +682,7 @@ public class SampleMecanumDrive {
         servos.get(2).setPosition(targetPos);
     }
     public void depositAtPoint(LinearOpMode opMode, Pose2d end){
-        target = new Pose2d(end,0,2,0);
+        target = new TrajectoryPeice(end,0,2,0);
         double side = Math.signum(end.y);
         while (opMode.opModeIsActive() && slidesCase <= 4) {
             startDeposit(new Pose2d(currentPose.getX(),currentPose.getY(),currentPose.getHeading()), new Pose2d(-13.0, 24.0 * side),13.5,3);
@@ -715,7 +715,6 @@ public class SampleMecanumDrive {
         Long stall = System.currentTimeMillis();
         Long noStall = System.currentTimeMillis();
         Long a = System.currentTimeMillis();
-        boolean b = true;
         boolean first = true;
         boolean c = true;
         double kI = 0;
@@ -724,7 +723,7 @@ public class SampleMecanumDrive {
             double currentPower = maxPower;
             double sidePower = 0;
             a = System.currentTimeMillis();
-            if (a - start >= 150 && Math.abs(relCurrentVel.getX()) <= 2 && goBackIfStall){
+            if (a - startingTime >= 150 && Math.abs(relCurrentVel.getX()) <= 2 && goBackIfStall){
                 if (first && a - lastGoodIntake >= 300) {
                     first = false;
                     maxTime += 500;
@@ -777,7 +776,7 @@ public class SampleMecanumDrive {
     }
 
     public void driveToPoint(LinearOpMode opMode, Pose2d target, Pose2d target2, boolean intake, double error, long maxTime, boolean forward){
-        this.target = new Pose2d(target,0,2,0);
+        this.target = new TrajectoryPeice(target,0,2,0);
         long startH = System.currentTimeMillis();
         update();
         boolean x = (Math.max(target.getX(),target2.getX()) + error > currentPose.getX() && Math.min(target.getX(),target2.getX()) - error < currentPose.getX());
@@ -810,7 +809,7 @@ public class SampleMecanumDrive {
     double lastL = 0;
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
         update();
-        Pose2d targetPoint;
+        TrajectoryPeice targetPoint;
         lastLoop = System.nanoTime();
         trajectory.start();
         while (opMode.opModeIsActive() && trajectory.points.size() != 0){
