@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import java.util.ArrayList;
 
-public class robotComponents {
+public class RobotComponents {
     public ArrayList<Component> components;
     double wheelWidth;
     double wheelDiameter;
@@ -13,10 +13,10 @@ public class robotComponents {
     int componentNum = 0;
     int odoStart = 0;
     String bodyColor;
-    public robotComponents(boolean useOdometry){
+    public RobotComponents(boolean useOdometry){
         this(useOdometry,"#707070");
     }
-    public robotComponents(boolean useOdometry, String color){
+    public RobotComponents(boolean useOdometry, String color){
         bodyColor = color;
         wheelWidth = 1.49606;
         wheelDiameter = 3.77953;
