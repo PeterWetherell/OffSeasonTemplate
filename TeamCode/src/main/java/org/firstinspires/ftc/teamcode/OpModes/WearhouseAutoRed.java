@@ -98,15 +98,15 @@ public class WearhouseAutoRed extends LinearOpMode {
         if (angle != 0) {
             drive.followTrajectory(this,
                     new Trajectory(new TrajectoryPeice(drive.currentPose, 0, 5, 0.5), true)
-                            .addLine(new TrajectoryPeice(new Pose2d(x - 5, endPoint.y, 0), 0, 5, 0.95))
-                            .addLine(new TrajectoryPeice(new Pose2d(x, y, angle), 0, 4, 0.6))
+                            .addLine(new TrajectoryPeice(new Pose2d(x - 5, endPoint.y, 0), 0, 5, 0.95),true)
+                            .addLine(new TrajectoryPeice(new Pose2d(x, y, angle), 0, 4, 0.6),true)
                             .end()
             );
         }
         else{
             drive.followTrajectory(this,
                     new Trajectory(new TrajectoryPeice(drive.currentPose, 0, 5, 0.5), true)
-                            .addLine(new TrajectoryPeice(new Pose2d(x, endPoint.y, 0), 0, 5, 0.95))
+                            .addLine(new TrajectoryPeice(new Pose2d(x, endPoint.y, 0), 0, 5, 0.95),true)
                             .end()
             );
             int k = 6;

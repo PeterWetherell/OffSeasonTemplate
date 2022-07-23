@@ -812,7 +812,7 @@ public class SampleMecanumDrive {
         TrajectoryPeice targetPoint;
         lastLoop = System.nanoTime();
         trajectory.start();
-        while (opMode.opModeIsActive() && trajectory.points.size() != 0){
+        while (opMode.opModeIsActive() && trajectory.points.size() != 0 && (((intakeCase <= 2 || intakeCase == 8) || currentPose.getX() <= 38) || !trajectory.points.get(0).intakeInterupt)){
 
             long currentTime = System.nanoTime();
             double loopTime = (lastLoop-currentTime)/1000000000.0;
