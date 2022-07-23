@@ -451,32 +451,32 @@ public class SampleMecanumDrive {
     // 8 reset intake and wait for slides to reset and then go to idle
 
     public void updateIntake(){
-        if (startIntake && intakeCase == 0){
+        if (startIntake && intakeCase == 0) { // going from idle to starting intake
             intakeCase = 1;
             intakeTime = System.currentTimeMillis();
             startIntake = false;
         }
-        if (System.currentTimeMillis() - intakeDelay >= 500){
+        if (System.currentTimeMillis() - intakeDelay >= 500) {
             startIntake = false;
         }
-        if (!transferMineral){
+        if (!transferMineral) { // if not transferring mineral
             setDepositAngle(depositInterfaceAngle);
             setV4barOrientation(v4barInterfaceAngle);
-            setTurretTarget(intakeTurretInterfaceHeading * currentIntake);
-            if (Math.abs(getTurretAngle()) >= Math.toRadians(20)){
+            setTurretTarget(intakeTurretInterfaceHeading * currentIntake); // move turret to left(1) or right(-1) side
+            if (Math.abs(getTurretAngle()) >= Math.toRadians(20)) { // notice absolute
                 setSlidesLength(returnSlideLength, 0.4);
             }
             else{
-                setSlidesLength(returnSlideLength + 2.5, 0.4);
+                setSlidesLength(returnSlideLength + 2.5, 0.4); // so doesn't get caught on transfer guide
             }
-            if (intakeCase == 0){
-                if (currentIntake == 1) {
+            if (intakeCase == 0) { // intake still, setting left and right intake's servo pos
+                if (currentIntake == 1) { // left
                     servos.get(1).setPosition(leftIntakeRaise);
                 }
                 else {
                     servos.get(1).setPosition(leftIntakeMid);
                 }
-                if (currentIntake == -1) {
+                if (currentIntake == -1) { // right
                     servos.get(0).setPosition(rightIntakeRaise);
                 }
                 else {
@@ -485,38 +485,44 @@ public class SampleMecanumDrive {
                 motorPriorities.get(4).setTargetPower(0);
             }
         }
-        if (lastIntakeCase != intakeCase) {
+        if (lastIntakeCase != intakeCase) { // change in case
+            // most for logging
             switch (intakeCase) {
-                case 3: transferTime = System.currentTimeMillis();break; // lift up the servo
+                case 3:
+                    transferTime = System.currentTimeMillis();
+                    break; // lift up the servo
                 case 6:
                     Log.e("liftTime" , (System.currentTimeMillis() - transferTime) + "");
                     transferTime = System.currentTimeMillis();
                     break;
-                case 8:
+                case 8: // reset
                     Log.e("transferTime" , (System.currentTimeMillis() - transferTime) + "");
-                    motorPriorities.get(4).setTargetPower(0); transferMineral = true; intakeDepositTransfer = false;
-                    setDepositAngle(depositInterfaceAngle + Math.toRadians(30)); //15
+                    motorPriorities.get(4).setTargetPower(0);
+                    transferMineral = true;
+                    intakeDepositTransfer = false;
+                    setDepositAngle(depositInterfaceAngle + Math.toRadians(30)); // makes sure deposit bucket doesn't hit hub
                     firstSlide = false;
                     break; // turn off the intake
             }
-            intakeTime = System.currentTimeMillis();
+            intakeTime = System.currentTimeMillis(); // time since last change in case
         }
         lastIntakeCase = intakeCase;
         int a = intakeCase;
         switch (a) {
             case 1: case 2:
-                motorPriorities.get(4).setTargetPower(0.3);
+                motorPriorities.get(4).setTargetPower(0.3); // start intake as dropping intake
                 if (a == 2) {
-                    motorPriorities.get(4).setTargetPower(intakePower);
+                    motorPriorities.get(4).setTargetPower(intakePower); // -1 power
                 }
                 if (intakeCase == 1 && System.currentTimeMillis() - intakeTime >= dropIntakeTime){intakeCase ++;}// waiting for the servo to drop
+                // line below checks left/right intake and if force sensor inside has been triggered, also makes sure that it doesn't happen within the first 100ms since intake drop
                 if (intakeCase == 2 && ((currentIntake == -1 && numRightIntake >= 3) || (currentIntake == 1 && numLeftIntake >= 3)) && System.currentTimeMillis() - intakeTime >= 100){intakeCase ++;}
 
-                if(currentIntake == 1){servos.get(1).setPosition(leftIntakeDrop);servos.get(0).setPosition(rightIntakeMid);}
-                if(currentIntake == -1){servos.get(0).setPosition(rightIntakeDrop);servos.get(1).setPosition(leftIntakeMid);}
+                if(currentIntake == 1){servos.get(1).setPosition(leftIntakeDrop);servos.get(0).setPosition(rightIntakeMid);} // drop left intake
+                if(currentIntake == -1){servos.get(0).setPosition(rightIntakeDrop);servos.get(1).setPosition(leftIntakeMid);} // drop right intake
                 break; // wait for block in
             case 3:
-                if (System.currentTimeMillis() - intakeTime >= intakeLiftDelay) {
+                if (System.currentTimeMillis() - intakeTime >= intakeLiftDelay) { // waits intakeLiftDelay (100ms) before lifting intake
                     if (currentIntake == 1) {
                         servos.get(1).setPosition(leftIntakeRaise);
                     }
@@ -524,6 +530,7 @@ public class SampleMecanumDrive {
                         servos.get(0).setPosition(rightIntakeRaise);
                     }
                 }
+                // checks that either magnets get triggered or time based last resort is triggered
                 if ((((currentIntake == 1 && getMagValLeft() >= 1900) || (currentIntake == -1 && getMagValRight() >= 1900)) || System.currentTimeMillis() - intakeTime >= liftIntakeTime + intakeLiftDelay) && !transferMineral){
                     intakeCase ++;
                 }
@@ -532,9 +539,12 @@ public class SampleMecanumDrive {
                     setV4barOrientation(v4barInterfaceAngle);
                 }
                 break;  // waiting for the servo to go up && slides to be back 200 before
-            case 4: if (Math.abs(getTurretAngle() - intakeTurretInterfaceHeading*currentIntake) <= Math.toRadians(7.5)){intakeCase ++;}break;//wait for the slides to be in the correct orientation
-            case 5: if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(5) && Math.abs(getSlideLength() - returnSlideLength) < 0.5){intakeCase ++;}break;
+            case 4: if (Math.abs(getTurretAngle() - intakeTurretInterfaceHeading*currentIntake) <= Math.toRadians(7.5)){intakeCase ++;}break;// waits for the turret to be in the correct orientation within 7.5 deg
+            case 5: if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(5) && Math.abs(getSlideLength() - returnSlideLength) < 0.5){intakeCase ++;}break; // waits for v4bar and slides to be in correct orientation within some margin
+            // sets power for intake, moves onto next case if time since case 5 is > 200 ms and either the intakeDepositTransfer = true or time since case 5 is > transfer1Time (215 ms)
             case 6: motorPriorities.get(4).setTargetPower(transfer1Power); if (System.currentTimeMillis() - intakeTime >= 200 && (intakeDepositTransfer || System.currentTimeMillis() - intakeTime >= transfer1Time)){intakeCase ++;}break;
+            // sets power for intake, moves onto next case if time since case 6 is > 30 and either the intakeDepositTransfer = true or time since case 6 is > transfer2Time
+            // also sets v4bar for deposit angle
             case 7: motorPriorities.get(4).setTargetPower(transfer1Power); if (System.currentTimeMillis() - intakeTime >= 30 && (intakeDepositTransfer || System.currentTimeMillis() - intakeTime >= transfer2Time)){intakeCase ++;currentDepositAngle = depositInterfaceAngle;}break;
         }
     }
@@ -566,6 +576,8 @@ public class SampleMecanumDrive {
             slideTime = System.currentTimeMillis();
             startSlides = false;
         }
+
+        // timer backups
         if (System.currentTimeMillis() - depositDelay >= 500){
             deposit = false;
         }
@@ -581,7 +593,7 @@ public class SampleMecanumDrive {
             switch (a) {
                 case 1: case 2: case 3:
                     double t = targetV4barOrientation + v4barOffset - Math.toRadians(10);
-                    if (!firstSlide){
+                    if (!firstSlide) { // firstSlide = false
                         firstSlide = true;
                         slideStart = System.currentTimeMillis();
                     }
@@ -590,12 +602,12 @@ public class SampleMecanumDrive {
                         setTurretTarget(targetTurretHeading + turretOffset);
 
                         double speed = 0.2;
-                        double l = Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset));
+                        double l = Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset)); // slides error
 
                         double target;
-                        if (targetSlideExtensionLength + slidesOffset <= 10) {
+                        if (targetSlideExtensionLength + slidesOffset <= 10) { // must be shared hub
                             target = Math.toRadians(110);
-                        } else {
+                        } else { // alliance hub
                             speed = 0.6;
                             target = Math.toRadians(107.5);
                         }
@@ -832,9 +844,9 @@ public class SampleMecanumDrive {
         return magValRight;
     }
     public void startIntake(boolean rightIntake){
-        double targetIntake = 1;
+        double targetIntake = 1; // left intake
         if (rightIntake){
-            targetIntake = -1;
+            targetIntake = -1; // right intake
         }
         startIntake = true;
         intakeDelay = System.currentTimeMillis();
