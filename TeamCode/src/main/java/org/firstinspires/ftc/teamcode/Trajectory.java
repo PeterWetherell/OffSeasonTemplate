@@ -4,30 +4,28 @@ import java.util.ArrayList;
 
 public class Trajectory {
 
-    private ArrayList<Pose2d> internalPoints;
+    private ArrayList<TrajectoryPeice> internalPoints;
     boolean slowDown;
-    public Trajectory (Pose2d a, boolean slowDown){
+    public Trajectory (TrajectoryPeice a, boolean slowDown){
         internalPoints = new ArrayList<>();
         internalPoints.add(a);
         this.slowDown = slowDown;
     }
-    public Trajectory addLine(Pose2d end){
-        Pose2d start = internalPoints.get(internalPoints.size()-1);
-        internalPoints.set(internalPoints.size() - 1, new Pose2d(
-                        start.x,
-                        start.y,
-                        start.heading,
+    public Trajectory addLine(TrajectoryPeice end){
+        TrajectoryPeice start = internalPoints.get(internalPoints.size()-1);
+        internalPoints.set(internalPoints.size() - 1, new TrajectoryPeice(
+                        start,
                         end.headingOffset,
                         end.radius,
                         start.speed
                 ));
         double i = 0;
-        ArrayList<Pose2d> newPoints = new ArrayList<>();
-        double d = Math.sqrt(Math.pow(end.x-internalPoints.get(internalPoints.size()-1).x,2)+Math.pow(end.y-internalPoints.get(internalPoints.size()-1).y,2));
+        ArrayList<TrajectoryPeice> newPoints = new ArrayList<>();
+        //double d = Math.sqrt(Math.pow(end.pose.x-internalPoints.get(internalPoints.size()-1).pose.x,2)+Math.pow(end.pose.y-internalPoints.get(internalPoints.size()-1).pose.y,2));
         while (i <= 1){
             i += 0.01;
             newPoints.add(
-                    new Pose2d(
+                    new TrajectoryPeice(
                             start.x + (end.x-start.x) * i,
                             start.y + (end.y-start.y) * i,
                             end.heading,
@@ -38,7 +36,38 @@ public class Trajectory {
             );
         }
         internalPoints.addAll(newPoints);
-        Trajectory a = new Trajectory(new Pose2d(0,0), slowDown);
+        Trajectory a = new Trajectory(new TrajectoryPeice( new Pose2d(0,0,0),0,0,0), slowDown);
+        a.internalPoints = internalPoints;
+        return a;
+    }
+    public Trajectory addLine(TrajectoryPeice end, boolean intake){
+        TrajectoryPeice start = internalPoints.get(internalPoints.size()-1);
+        internalPoints.set(internalPoints.size() - 1, new TrajectoryPeice(
+                start,
+                end.headingOffset,
+                end.radius,
+                start.speed,
+                intake
+        ));
+        double i = 0;
+        ArrayList<TrajectoryPeice> newPoints = new ArrayList<>();
+        //double d = Math.sqrt(Math.pow(end.pose.x-internalPoints.get(internalPoints.size()-1).pose.x,2)+Math.pow(end.pose.y-internalPoints.get(internalPoints.size()-1).pose.y,2));
+        while (i <= 1){
+            i += 0.01;
+            newPoints.add(
+                    new TrajectoryPeice(
+                            start.x + (end.x-start.x) * i,
+                            start.y + (end.y-start.y) * i,
+                            end.heading,
+                            end.headingOffset,
+                            end.radius,
+                            end.speed,
+                            intake
+                    )
+            );
+        }
+        internalPoints.addAll(newPoints);
+        Trajectory a = new Trajectory(new TrajectoryPeice( new Pose2d(0,0,0),0,0,0), slowDown);
         a.internalPoints = internalPoints;
         return a;
     }
@@ -58,12 +87,12 @@ public class Trajectory {
                 i ++;
             }
         }
-        Trajectory a = new Trajectory(new Pose2d(0,0), slowDown);
+        Trajectory a = new Trajectory(new TrajectoryPeice( new Pose2d(0,0,0),0,0,0), slowDown);
         a.internalPoints = internalPoints;
         return a;
     }
-    public ArrayList<Pose2d> points;
-    public ArrayList<Pose2d> pastPoints;
+    public ArrayList<TrajectoryPeice> points;
+    public ArrayList<TrajectoryPeice> pastPoints;
     public void start(){
         points = internalPoints;
         pastPoints = new ArrayList<>();
