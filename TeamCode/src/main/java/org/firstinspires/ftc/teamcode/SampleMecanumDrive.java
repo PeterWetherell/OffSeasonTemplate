@@ -611,6 +611,7 @@ public class SampleMecanumDrive {
                             speed = 0.6;
                             target = Math.toRadians(107.5);
                         }
+                        // difference between
                         currentDepositAngle += Math.signum(target - currentDepositAngle) * Math.min(Math.abs((depositTransferAngle - depositInterfaceAngle) / speed) * loopTime, Math.toRadians(1.0));
                         if (Math.abs(target - currentDepositAngle) <= Math.toRadians(1)) {
                             currentDepositAngle = target;
