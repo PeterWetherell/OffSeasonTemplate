@@ -631,7 +631,7 @@ public class SampleMecanumDrive {
                             } else if (l < 10) { // alliance, slides are extended within 10 inches of target --> slow down
                                 slidePower = 0.5;
                                 setSlidesLength(targetSlideExtensionLength + slidesOffset, Math.max((slidePower - 0.65), 0.05) + Math.pow((targetSlideExtensionLength + slidesOffset - getSlideLength()) / 10.0, 2) * 0.25);//o.35
-                                if (t >= Math.toRadians(160) && Math.abs(getSlideSpeed()) >= 10 && Math.abs(currentV4barAngle - t) >= Math.toRadians(5)) { // avoid hitting hub?
+                                if (t >= Math.toRadians(160) && Math.abs(getSlideSpeed()) >= 10 && Math.abs(currentV4barAngle - t) >= Math.toRadians(5)) { // stops v4bar from throwing freight when arm is going down
                                     setV4barOrientation(Math.min(Math.toRadians(137.1980907721663), t));
                                 } else {
                                     setV4barOrientation(t);
@@ -681,6 +681,7 @@ public class SampleMecanumDrive {
                     }
                     else { // slides have already retracted
                         setV4barOrientation(v4barInterfaceAngle);
+                        // Makes sure the deposit doesn't get caught on the robot by only fully retracting when it's tiled past the point it could get caught on
                         if (currentV4barAngle >= v4barInterfaceAngle + Math.toRadians(15)){
                             setSlidesLength(returnSlideLength + 3, 0.4);
                         }
@@ -821,7 +822,7 @@ public class SampleMecanumDrive {
         pinMotorPowers(0,0,0,0);
     }
 
-    public void driveToPoint(LinearOpMode opMode, Pose2d target, Pose2d target2, boolean intake, double error, long maxTime, boolean forward){
+    public void driveToPoint(LinearOpMode opMode, Pose2d target, Pose2d target2, boolean intake, double error, long maxTime, boolean forward) {
         this.target = new TrajectoryPeice(target,0,2,0);
         long startH = System.currentTimeMillis();
         update();
