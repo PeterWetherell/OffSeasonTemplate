@@ -438,7 +438,7 @@ public class SampleMecanumDrive {
     public double rightIntakeRaise = 0.279;
     public double rightIntakeMid = 0.356;
     public double intakeTurretInterfaceHeading = Math.toRadians(57.5);
-    public static double depositInterfaceAngle = 0.8;
+    public static double depositInterfaceAngle = 0.8; // ~45 degrees
     public static double v4barInterfaceAngle = 0.15;
     long transferTime = System.currentTimeMillis();
     public int intakeLiftDelay = 100;
@@ -597,7 +597,7 @@ public class SampleMecanumDrive {
             int a = slidesCase;
             switch (a) {
                 case 1: case 2: case 3:
-                    double t = targetV4barOrientation + v4barOffset - Math.toRadians(10);
+                    double t = targetV4barOrientation + v4barOffset - Math.toRadians(10); // v4bar target angle
                     if (!firstSlide) { // firstSlide = false
                         firstSlide = true;
                         slideStart = System.currentTimeMillis();
@@ -616,6 +616,7 @@ public class SampleMecanumDrive {
                             speed = 0.6;
                             target = Math.toRadians(107.5);
                         }
+                        // depositTransferAngle - depositInterfaceAngle is how much the deposit needs to move. We divide by the speed set, to artificially slow down the deposit by splitting it's movement into many small steps
                         currentDepositAngle += Math.signum(target - currentDepositAngle) * Math.min(Math.abs((depositTransferAngle - depositInterfaceAngle) / speed) * loopTime, Math.toRadians(1.0));
                         if (Math.abs(target - currentDepositAngle) <= Math.toRadians(1)) {
                             currentDepositAngle = target;
@@ -624,13 +625,13 @@ public class SampleMecanumDrive {
 
                         double slidePower = 1.0;
                         if (Math.abs(getTurretAngle() - (targetTurretHeading + turretOffset)) <= Math.toRadians(10)) {
-                            if (slidesCase == 1) {
+                            if (slidesCase == 1) { // shared
                                 setSlidesLength(4, slidePower);
                                 setV4barOrientation(Math.min(Math.toRadians(130), t));
-                            } else if (l < 10) {
+                            } else if (l < 10) { // alliance, slides are extended within 10 inches of target --> slow down
                                 slidePower = 0.5;
                                 setSlidesLength(targetSlideExtensionLength + slidesOffset, Math.max((slidePower - 0.65), 0.05) + Math.pow((targetSlideExtensionLength + slidesOffset - getSlideLength()) / 10.0, 2) * 0.25);//o.35
-                                if (t >= Math.toRadians(160) && Math.abs(getSlideSpeed()) >= 10 && Math.abs(currentV4barAngle - t) >= Math.toRadians(5)) {
+                                if (t >= Math.toRadians(160) && Math.abs(getSlideSpeed()) >= 10 && Math.abs(currentV4barAngle - t) >= Math.toRadians(5)) { // avoid hitting hub?
                                     setV4barOrientation(Math.min(Math.toRadians(137.1980907721663), t));
                                 } else {
                                     setV4barOrientation(t);
@@ -645,36 +646,40 @@ public class SampleMecanumDrive {
                         currentDepositAngle = Math.toRadians(105);
                         setDepositAngle(currentDepositAngle);
                     }
+                    // case 1 is shared. This if statement moves from shared to next case if slides and v4bar are back or slides have extended past a certain point
                     if (slidesCase == 1 && ((Math.abs(getSlideLength() - 4) <= 3.5 && (currentV4barAngle >= Math.min(Math.toRadians(130),t))) || targetSlideExtensionLength + slidesOffset >= 10)){slidesCase ++;}
+                    // makes sure turret, slides, v4bar are all correct length within some margin
                     else if (slidesCase == 2 && (Math.abs(getTurretAngle() - (targetTurretHeading + turretOffset)) <= Math.toRadians(7.5)
                             && Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset)) <= 6
                             && Math.abs(t - currentV4barAngle) <= Math.toRadians(5))
                     ){slidesCase ++;}
+                    // deposit has been triggered and at least 100 ms has passed since last case. Resets deposit angle after finished depositing
                     if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++; setDepositAngle(Math.toRadians(180) - effectiveDepositAngle);} //else if
                     break;
                 case 4:
                     double depoAngle = Math.toRadians(180) - effectiveDepositAngle;
-                    if (System.currentTimeMillis()-slideTime <= effectiveDepositTime - 150){
+                    if (System.currentTimeMillis()-slideTime <= effectiveDepositTime - 150) { // waiting for freight to fall out of deposit
                         setV4barOrientation(targetV4barOrientation + v4barOffset);
                     }
-                    else{
+                    else{ // freight has fallen out of deposit
                         setV4barOrientation(targetV4barOrientation + v4barOffset - Math.toRadians(10));
                     }
 
                     setDepositAngle(depoAngle);
                     setTurretTarget(targetTurretHeading + turretOffset);
                     setSlidesLength(targetSlideExtensionLength + slidesOffset,0.25);
+                    // moves onto next case and resets. Sets depositAngle to prepare for transfer
                     if (slidesCase == 4 && System.currentTimeMillis() - slideTime >= effectiveDepositTime){slidesCase ++; intakeCase = 0; lastIntakeCase = 0; currentDepositAngle = depositTransferAngle;} // + 70 effectiveDepositTime
                     break;
                 case 5 : case 6: case 7: case 8:
                     setDepositAngle(depositInterfaceAngle);
-                    if (slidesCase == 5){
-                        //DO NOTHING: NO MOVING SLIDES BACK NO MOVING V4BAR
+                    if (slidesCase == 5) { // moving v4bar during retract
+                        //DO NOTHING: NO MOVING SLIDES BACK = NO MOVING V4BAR
                         if (System.currentTimeMillis() - slideTime >= 150){
                             setV4barOrientation(v4barInterfaceAngle);
                         }
                     }
-                    else {
+                    else { // slides have already retracted
                         setV4barOrientation(v4barInterfaceAngle);
                         if (currentV4barAngle >= v4barInterfaceAngle + Math.toRadians(15)){
                             setSlidesLength(returnSlideLength + 3, 0.4);
