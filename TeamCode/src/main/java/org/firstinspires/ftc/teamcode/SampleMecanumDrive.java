@@ -13,7 +13,6 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.openftc.revextensions2.ExpansionHubEx;
@@ -604,7 +603,7 @@ public class SampleMecanumDrive {
                         double l = Math.abs(getSlideLength() - (depositTargetSlideExtensionLength + slidesOffset)); // slides error
 
                         double speed = 0.41;
-                        double target = Math.toRadians(107.5);;
+                        double target = Math.toRadians(107.5);
                         if (depositTargetSlideExtensionLength + slidesOffset >= 10) {
                             target = Math.toRadians(110);
                             speed = 0.14;
@@ -662,10 +661,7 @@ public class SampleMecanumDrive {
                     if (slidesCase > 5 || System.currentTimeMillis() - slideTime >= 150){
                         servos.get(4).setOrientation(v4barInterfaceAngle);
                     }
-                    if (slidesCase == 5) { // moving v4bar during retract
-                        //DO NOTHING: NO MOVING SLIDES BACK = NO MOVING V4BAR
-                    }
-                    else { // slides have already retracted
+                    if (slidesCase > 5) { // slides have already retracted
                         if (servos.get(4).getOrientation() >= v4barInterfaceAngle + Math.toRadians(15)){
                             setSlidesLength(returnSlideLength + 3, 0.4);
                         }
@@ -711,7 +707,7 @@ public class SampleMecanumDrive {
             error.heading = 0 - currentPose.heading;
 
             double f = error.x * 0.2;
-            double l = error.y * 0.2;
+            double l = error.y * 0.2 + a;
             double t = Math.toDegrees(error.heading) * 0.04;
             pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
         }
@@ -720,18 +716,16 @@ public class SampleMecanumDrive {
 
     public void intakeMineral(LinearOpMode opMode, double power, long maxTime, boolean goBackIfStall){
         long startingTime = System.currentTimeMillis();
-        double maxPower = power;
         Pose2d lastPose = currentPose;
-        Long lastGoodIntake = System.currentTimeMillis();
-        Long stall = System.currentTimeMillis();
-        Long noStall = System.currentTimeMillis();
-        Long a = System.currentTimeMillis();
+        long lastGoodIntake = System.currentTimeMillis();
+        long stall = System.currentTimeMillis();
+        long noStall = System.currentTimeMillis();
+        long a = System.currentTimeMillis();
         boolean first = true;
         boolean c = true;
         double kI = 0;
         double side = Math.signum(currentPose.y);
         while(opMode.opModeIsActive() && intakeCase <= 2 && a-startingTime <= maxTime){
-            double currentPower = maxPower;
             double sidePower = 0;
             a = System.currentTimeMillis();
             if (a - startingTime >= 150 && Math.abs(relCurrentVel.getX()) <= 2 && goBackIfStall){
@@ -777,8 +771,8 @@ public class SampleMecanumDrive {
             double speedError = targetSpeed-currentSpeed;
             double kP = speedError * 0.02;
             kI += speedError * loopTime * 0.0005;
-            double multiplier = Math.min(1.0/(Math.abs(currentPower) + Math.abs(turn) + Math.abs(sidePower)),1);
-            double f = kP + kI + currentPower * 0.75;
+            double multiplier = Math.min(1.0/(Math.abs(power) + Math.abs(turn) + Math.abs(sidePower)),1);
+            double f = kP + kI + power * 0.75;
             pinMotorPowers((f+turn-sidePower)*multiplier,(f+turn+sidePower)*multiplier,(f-turn-sidePower)*multiplier,(f-turn+sidePower)*multiplier);
             update();
         }
