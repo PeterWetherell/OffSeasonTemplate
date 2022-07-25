@@ -89,24 +89,20 @@ public class SampleMecanumDrive {
         rightFront.setMode(runMode);
     }
 
-    public ArrayList<Servo> servos;
+    public ArrayList<ExtraServo> servos;
     public CRServo duckSpin, duckSpin2;
     public void initServos(HardwareMap hardwareMap){
         servos = new ArrayList<>();
-        for (int i = 0; i < 12; i ++) {
-            switch (i){
-                case 0: servos.add(hardwareMap.servo.get("rightIntake")); break;
-                case 1: servos.add(hardwareMap.servo.get("leftIntake")); break;
-                case 2: servos.add(hardwareMap.servo.get("deposit")); break;
-                case 3: servos.add(hardwareMap.servo.get("odoLift")); break;
-                case 4: servos.add(hardwareMap.servo.get("v4bar")); break;
-                case 5: servos.add(hardwareMap.servo.get("rightCapstone")); break;
-                case 6: servos.add(hardwareMap.servo.get("leftCapstone")); break;
-                case 7: servos.add(hardwareMap.servo.get("duckSpinSpin")); break;
-                case 8: servos.add(hardwareMap.servo.get("rightOdo")); break;
-                case 9: servos.add(hardwareMap.servo.get("leftOdo")); break;
-            }
-        }
+        servos.add(new ExtraServo(hardwareMap.servo.get("rightIntake"),"Super Speed",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("leftIntake"),"Super Speed",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("deposit"),"Super Speed",1)); servos.get(2).servoPositions(0.215820468,0.21,0,0.86);
+        servos.add(new ExtraServo(hardwareMap.servo.get("odoLift"),"Torque",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("v4bar"),"Torque",0.908333333333)); servos.get(4).servoPositions(-0.201172, 0.94,0.108,0.94);
+        servos.add(new ExtraServo(hardwareMap.servo.get("rightCapstone"),"Torque",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("leftCapstone"),"Torque",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("duckSpinSpin"),"Torque",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("rightOdo"),"Torque",1));
+        servos.add(new ExtraServo(hardwareMap.servo.get("leftOdo"),"Torque",1));
         duckSpin = hardwareMap.crservo.get("duckSpin");
         duckSpin2 = hardwareMap.crservo.get("duckSpin2");
     }
@@ -220,8 +216,7 @@ public class SampleMecanumDrive {
         else {
             sensorLoops ++;
         }
-
-        updateV4barAngle(loopTime);
+        servos.get(2).offset = - servos.get(4).currentOrientation;
 
         double targetLoopLength = 0.010; //Sets the target loop time in seconds
         double bestMotorUpdate = 1;
@@ -465,8 +460,8 @@ public class SampleMecanumDrive {
             startIntake = false;
         }
         if (!transferMineral) { // if not transferring mineral
-            setDepositAngle(depositInterfaceAngle);
-            setV4barOrientation(v4barInterfaceAngle);
+            servos.get(2).setOrientation(depositInterfaceAngle);
+            servos.get(4).setOrientation(v4barInterfaceAngle);
             setTurretTarget(intakeTurretInterfaceHeading * currentIntake); // move turret to left(1) or right(-1) side
             if (Math.abs(getTurretAngle()) >= Math.toRadians(20)) { // notice absolute
                 setSlidesLength(returnSlideLength, 0.4);
@@ -505,7 +500,7 @@ public class SampleMecanumDrive {
                     motorPriorities.get(4).setTargetPower(0);
                     transferMineral = true;
                     intakeDepositTransfer = false;
-                    setDepositAngle(depositInterfaceAngle + Math.toRadians(30)); // makes sure deposit bucket doesn't hit hub
+                    servos.get(2).setOrientation(depositInterfaceAngle + Math.toRadians(30)); // makes sure deposit bucket doesn't hit hub
                     firstSlide = false;
                     break; // turn off the intake
             }
@@ -540,12 +535,12 @@ public class SampleMecanumDrive {
                     intakeCase ++;
                 }
                 if (!transferMineral){
-                    setDepositAngle(depositInterfaceAngle);
-                    setV4barOrientation(v4barInterfaceAngle);
+                    servos.get(2).setOrientation(depositInterfaceAngle);
+                    servos.get(4).setOrientation(v4barInterfaceAngle);
                 }
                 break;  // waiting for the servo to go up && slides to be back 200 before
             case 4: if (Math.abs(getTurretAngle() - intakeTurretInterfaceHeading*currentIntake) <= Math.toRadians(7.5)){intakeCase ++;}break;// waits for the turret to be in the correct orientation within 7.5 deg
-            case 5: if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(5) && Math.abs(getSlideLength() - returnSlideLength) < 0.5){intakeCase ++;}break; // waits for v4bar and slides to be in correct orientation within some margin
+            case 5: if (Math.abs(v4barInterfaceAngle - servos.get(4).getOrientation()) < Math.toRadians(5) && Math.abs(getSlideLength() - returnSlideLength) < 0.5){intakeCase ++;}break; // waits for v4bar and slides to be in correct orientation within some margin
             // sets power for intake, moves onto next case if time since case 5 is > 200 ms and either the intakeDepositTransfer = true or time since case 5 is > transfer1Time (215 ms)
             case 6: motorPriorities.get(4).setTargetPower(transfer1Power); if (System.currentTimeMillis() - intakeTime >= 200 && (intakeDepositTransfer || System.currentTimeMillis() - intakeTime >= transfer1Time)){intakeCase ++;}break;
             // sets power for intake, moves onto next case if time since case 6 is > 30 and either the intakeDepositTransfer = true or time since case 6 is > transfer2Time
@@ -597,91 +592,81 @@ public class SampleMecanumDrive {
             int a = slidesCase;
             switch (a) {
                 case 1: case 2: case 3:
-                    double t = targetV4barOrientation + v4barOffset - Math.toRadians(10); // v4bar target angle
-                    if (!firstSlide) { // firstSlide = false
+                    double t = depositTargetV4barOrientation + v4barOffset - Math.toRadians(10); // v4bar target angle
+                    if (!firstSlide) {
                         firstSlide = true;
                         slideStart = System.currentTimeMillis();
                     }
                     if (System.currentTimeMillis() - slideStart >= 80) {
 
-                        setTurretTarget(targetTurretHeading + turretOffset);
+                        setTurretTarget(depositTargetTurretHeading + turretOffset);
 
-                        double speed = 0.2;
-                        double l = Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset)); // slides error
+                        double l = Math.abs(getSlideLength() - (depositTargetSlideExtensionLength + slidesOffset)); // slides error
 
-                        double target;
-                        if (targetSlideExtensionLength + slidesOffset <= 10) { // must be shared hub
+                        double speed = 0.41;
+                        double target = Math.toRadians(107.5);;
+                        if (depositTargetSlideExtensionLength + slidesOffset >= 10) {
                             target = Math.toRadians(110);
-                        } else { // alliance hub
-                            speed = 0.6;
-                            target = Math.toRadians(107.5);
+                            speed = 0.14;
                         }
-                        // depositTransferAngle - depositInterfaceAngle is how much the deposit needs to move. We divide by the speed set, to artificially slow down the deposit by splitting it's movement into many small steps
-                        currentDepositAngle += Math.signum(target - currentDepositAngle) * Math.min(Math.abs((depositTransferAngle - depositInterfaceAngle) / speed) * loopTime, Math.toRadians(1.0));
-                        if (Math.abs(target - currentDepositAngle) <= Math.toRadians(1)) {
-                            currentDepositAngle = target;
-                        }
-                        setDepositAngle(currentDepositAngle);
+                        servos.get(2).setOrientation(target,speed);
 
                         double slidePower = 1.0;
-                        if (Math.abs(getTurretAngle() - (targetTurretHeading + turretOffset)) <= Math.toRadians(10)) {
+                        if (Math.abs(getTurretAngle() - (depositTargetTurretHeading + turretOffset)) <= Math.toRadians(10)) {
                             if (slidesCase == 1) { // shared
                                 setSlidesLength(4, slidePower);
-                                setV4barOrientation(Math.min(Math.toRadians(130), t));
+                                servos.get(4).setOrientation(Math.min(Math.toRadians(130), t));
                             } else if (l < 10) { // alliance, slides are extended within 10 inches of target --> slow down
                                 slidePower = 0.5;
-                                setSlidesLength(targetSlideExtensionLength + slidesOffset, Math.max((slidePower - 0.65), 0.05) + Math.pow((targetSlideExtensionLength + slidesOffset - getSlideLength()) / 10.0, 2) * 0.25);//o.35
-                                if (t >= Math.toRadians(160) && Math.abs(getSlideSpeed()) >= 10 && Math.abs(currentV4barAngle - t) >= Math.toRadians(5)) { // avoid hitting hub?
-                                    setV4barOrientation(Math.min(Math.toRadians(137.1980907721663), t));
+                                setSlidesLength(depositTargetSlideExtensionLength + slidesOffset, Math.max((slidePower - 0.65), 0.05) + Math.pow((depositTargetSlideExtensionLength + slidesOffset - getSlideLength()) / 10.0, 2) * 0.25);//o.35
+                                if (t >= Math.toRadians(160) && Math.abs(getSlideSpeed()) >= 10 && Math.abs(servos.get(4).getOrientation() - t) >= Math.toRadians(5)) { // avoid hitting hub?
+                                    servos.get(4).setOrientation(Math.min(Math.toRadians(137.1980907721663), t));
                                 } else {
-                                    setV4barOrientation(t);
+                                    servos.get(4).setOrientation(t);
                                 }
                             } else {
-                                setSlidesLength(targetSlideExtensionLength + slidesOffset, slidePower);
-                                setV4barOrientation(Math.min(Math.toRadians(130), t));
+                                setSlidesLength(depositTargetSlideExtensionLength + slidesOffset, slidePower);
+                                servos.get(4).setOrientation(Math.min(Math.toRadians(130), t));
                             }
                         }
                     }
                     else {
-                        currentDepositAngle = Math.toRadians(105);
-                        setDepositAngle(currentDepositAngle);
+                        servos.get(2).setOrientation(Math.toRadians(105));
                     }
                     // case 1 is shared. This if statement moves from shared to next case if slides and v4bar are back or slides have extended past a certain point
-                    if (slidesCase == 1 && ((Math.abs(getSlideLength() - 4) <= 3.5 && (currentV4barAngle >= Math.min(Math.toRadians(130),t))) || targetSlideExtensionLength + slidesOffset >= 10)){slidesCase ++;}
+                    if (slidesCase == 1 && ((Math.abs(getSlideLength() - 4) <= 3.5 && (servos.get(4).getOrientation() >= Math.min(Math.toRadians(130),t))) || depositTargetSlideExtensionLength + slidesOffset >= 10)){slidesCase ++;}
                     // makes sure turret, slides, v4bar are all correct length within some margin
-                    else if (slidesCase == 2 && (Math.abs(getTurretAngle() - (targetTurretHeading + turretOffset)) <= Math.toRadians(7.5)
-                            && Math.abs(getSlideLength() - (targetSlideExtensionLength + slidesOffset)) <= 6
-                            && Math.abs(t - currentV4barAngle) <= Math.toRadians(5))
+                    else if (slidesCase == 2 && (Math.abs(getTurretAngle() - (depositTargetTurretHeading + turretOffset)) <= Math.toRadians(7.5)
+                            && Math.abs(getSlideLength() - (depositTargetSlideExtensionLength + slidesOffset)) <= 6
+                            && Math.abs(t - servos.get(4).getOrientation()) <= Math.toRadians(5))
                     ){slidesCase ++;}
                     // deposit has been triggered and at least 100 ms has passed since last case. Resets deposit angle after finished depositing
-                    if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++; setDepositAngle(Math.toRadians(180) - effectiveDepositAngle);} //else if
+                    if (slidesCase == 3 && deposit && System.currentTimeMillis() - slideTime >= 100){slidesCase ++;} //else if
                     break;
                 case 4:
-                    double depoAngle = Math.toRadians(180) - effectiveDepositAngle;
                     if (System.currentTimeMillis()-slideTime <= effectiveDepositTime - 150) { // waiting for freight to fall out of deposit
-                        setV4barOrientation(targetV4barOrientation + v4barOffset);
+                        servos.get(4).setOrientation(depositTargetV4barOrientation + v4barOffset);
                     }
                     else{ // freight has fallen out of deposit
-                        setV4barOrientation(targetV4barOrientation + v4barOffset - Math.toRadians(10));
+                        servos.get(4).setOrientation(depositTargetV4barOrientation + v4barOffset - Math.toRadians(10));
                     }
 
-                    setDepositAngle(depoAngle);
-                    setTurretTarget(targetTurretHeading + turretOffset);
-                    setSlidesLength(targetSlideExtensionLength + slidesOffset,0.25);
+                    servos.get(2).setOrientation(Math.toRadians(180) - effectiveDepositAngle);
+                    setTurretTarget(depositTargetTurretHeading + turretOffset);
+                    setSlidesLength(depositTargetSlideExtensionLength + slidesOffset,0.25);
                     // moves onto next case and resets. Sets depositAngle to prepare for transfer
                     if (slidesCase == 4 && System.currentTimeMillis() - slideTime >= effectiveDepositTime){slidesCase ++; intakeCase = 0; lastIntakeCase = 0; currentDepositAngle = depositTransferAngle;} // + 70 effectiveDepositTime
                     break;
                 case 5 : case 6: case 7: case 8:
-                    setDepositAngle(depositInterfaceAngle);
+                    servos.get(2).setOrientation(depositInterfaceAngle);
+                    if (slidesCase > 5 || System.currentTimeMillis() - slideTime >= 150){
+                        servos.get(4).setOrientation(v4barInterfaceAngle);
+                    }
                     if (slidesCase == 5) { // moving v4bar during retract
                         //DO NOTHING: NO MOVING SLIDES BACK = NO MOVING V4BAR
-                        if (System.currentTimeMillis() - slideTime >= 150){
-                            setV4barOrientation(v4barInterfaceAngle);
-                        }
                     }
                     else { // slides have already retracted
-                        setV4barOrientation(v4barInterfaceAngle);
-                        if (currentV4barAngle >= v4barInterfaceAngle + Math.toRadians(15)){
+                        if (servos.get(4).getOrientation() >= v4barInterfaceAngle + Math.toRadians(15)){
                             setSlidesLength(returnSlideLength + 3, 0.4);
                         }
                         else{
@@ -695,7 +680,7 @@ public class SampleMecanumDrive {
                         setTurretTarget(intakeTurretInterfaceHeading * currentIntake);
                     }
                     else {
-                        setTurretTarget(targetTurretHeading + turretOffset);
+                        setTurretTarget(depositTargetTurretHeading + turretOffset);
                     }
                     if (slidesCase == 5 && System.currentTimeMillis() - slideTime >= 250){slidesCase ++;} //400
                     else if (slidesCase == 6 && Math.abs(getSlideLength()-returnSlideLength) <= 4){slidesCase ++;}
@@ -706,26 +691,6 @@ public class SampleMecanumDrive {
                     break;
             }
         }
-    }
-    double targetDepositAngle = 0;
-    double currentV4barAngle = 0;
-    double targetV4barAngle = 0;
-    public void updateV4barAngle(double loopSpeed) {
-        // direction * speed (180 degrees / 0.875 secs) * loopSpeed (secs) = angle (degrees)
-        // this determines how much the servo has moved in one loop if the servo is going full speed
-        currentV4barAngle += Math.signum(targetV4barAngle - currentV4barAngle) * Math.PI / 0.875 * loopSpeed; // 0.825 => 0.905
-        if (Math.abs(targetV4barAngle - currentV4barAngle) < Math.toRadians(1)){
-            currentV4barAngle = targetV4barAngle;
-        }
-        // coverts angle to servoPos
-        double servoPos = (targetV4barAngle * -0.201172) + 0.94; // 0.94 is servo position when v4bar is at 0 angle
-        servoPos = Math.max(Math.min(servoPos,0.94),0.108); // physical limits of servo
-        servos.get(4).setPosition(servoPos);
-
-        double angle = targetDepositAngle - currentV4barAngle;
-        double targetPos = angle * 0.215820468 + 0.21;
-        targetPos = Math.min(Math.max(targetPos,0.0),0.86);
-        servos.get(2).setPosition(targetPos);
     }
     public void depositAtPoint(LinearOpMode opMode, Pose2d end){
         target = new TrajectoryPeice(end,0,0);
@@ -896,12 +861,6 @@ public class SampleMecanumDrive {
     public void setTurretTarget(double radians){
         targetTurretPose = radians;
     }
-    public void setDepositAngle(double targetAngle){
-        targetDepositAngle = targetAngle;
-    }
-    public void setV4barOrientation(double targetV4barOrientation){
-        targetV4barAngle = targetV4barOrientation;
-    }
     public void setMotorPowers(double v, double v1, double v2, double v3) { // set motor power (only use in test programs)
         localizer.updatePowerVector(new double[]{v,v1,v2,v3});
         leftFront.setPower(v);
@@ -952,9 +911,9 @@ public class SampleMecanumDrive {
         startIntake = true;
         intakeDelay = System.currentTimeMillis();
     }
-    public double targetSlideExtensionLength = 0;
-    public double targetTurretHeading = 0;
-    public double targetV4barOrientation = 0;
+    public double depositTargetSlideExtensionLength = 0;
+    public double depositTargetTurretHeading = 0;
+    public double depositTargetV4barOrientation = 0;
     public double depositAngle = Math.toRadians(-45);
     public void startDeposit(Pose2d endPose, Pose2d targetPose, double height, double radius){
         double turretX = -0.75;
@@ -971,7 +930,7 @@ public class SampleMecanumDrive {
                 Math.cos(endPose.getHeading())*(endPose.getX()-x1) + Math.sin(endPose.getHeading())*(endPose.getY()-y1),
                 Math.cos(endPose.getHeading())*(endPose.getY()-y1) - Math.sin(endPose.getHeading())*(endPose.getX()-x1)
         );
-        targetTurretHeading = Math.atan2(relTarget.getY(),relTarget.getX());
+        depositTargetTurretHeading = Math.atan2(relTarget.getY(),relTarget.getX());
         height -= (9.44882 + Math.sin(depositAngle) * depositLength);
         double effectiveSlideAngle = Math.toRadians(8.92130165444);
         double v4BarLength = 8.75;
@@ -982,17 +941,17 @@ public class SampleMecanumDrive {
         double c = length*length - Math.pow(v4BarLength,2) + height * height;
         if (4.0 * a * c < b * b) {
             double slideExtension = (-1.0 * b - Math.sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
-            targetSlideExtensionLength = slideExtension / (Math.cos(effectiveSlideAngle));
-            targetV4barOrientation = Math.atan2(height - slideExtension * slope, slideExtension - length);
+            depositTargetSlideExtensionLength = slideExtension / (Math.cos(effectiveSlideAngle));
+            depositTargetV4barOrientation = Math.atan2(height - slideExtension * slope, slideExtension - length);
         }
         else{
-            targetSlideExtensionLength = length - v4BarLength;
-            targetV4barOrientation = Math.toRadians(180);
+            depositTargetSlideExtensionLength = length - v4BarLength;
+            depositTargetV4barOrientation = Math.toRadians(180);
         }
-        if (targetV4barOrientation < 0){
-            targetV4barOrientation += Math.PI * 2;
+        if (depositTargetV4barOrientation < 0){
+            depositTargetV4barOrientation += Math.PI * 2;
         }
-        targetSlideExtensionLength = Math.max(0,targetSlideExtensionLength);
+        depositTargetSlideExtensionLength = Math.max(0,depositTargetSlideExtensionLength);
         startSlides = true;
         slidesDelay = System.currentTimeMillis();
     }
