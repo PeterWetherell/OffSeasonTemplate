@@ -853,7 +853,6 @@ public class SampleMecanumDrive {
     double lastL = 0;
     public void followTrajectory(LinearOpMode opMode, Trajectory trajectory, boolean continueAfterTime){
         update();
-        TrajectoryPeice targetPoint;
         lastLoop = System.nanoTime();
         trajectory.start();
         long gameOver = System.currentTimeMillis();
@@ -867,6 +866,7 @@ public class SampleMecanumDrive {
 
             update();
             Pose2d relError = trajectory.update(currentPose,relCurrentVel);
+            target = trajectory.points.get(0);
 
             double t = Math.signum(heading.update(relError.heading)-lastT) * Math.toRadians(120)/0.5 * loopTime + lastT; //Makes sure that it doesn't change target speed too quickly (turning)
             lastT = t;
