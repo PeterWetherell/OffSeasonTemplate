@@ -26,13 +26,13 @@ public class strafeTest extends LinearOpMode {
         }
         drive.setPose(0,-12,Math.toRadians(90));
         for (int i = 0; i < 4; i ++) {
-            Trajectory trajectory1 = new Trajectory(new TrajectoryPeice(new Pose2d(0,-12,0),0,18,0.3), true)
-                    .addLine(new TrajectoryPeice(new Pose2d(60,-12,0),Math.toRadians(90),8,1))
+            Trajectory trajectory1 = new Trajectory(new TrajectoryPeice(new Pose2d(0,-12,0),0,0.3), true)
+                    .addLine(new TrajectoryPeice(new Pose2d(60,-12,0),Math.toRadians(90),1))
                     .end();
             drive.followTrajectory(this,trajectory1);
             waitMillis(2000);
-            Trajectory trajectory2 = new Trajectory(new TrajectoryPeice(new Pose2d(60,-12,0),0,18,0.3), true)
-                    .addLine(new TrajectoryPeice(new Pose2d(0,-12,0),Math.toRadians(-90),8,1))
+            Trajectory trajectory2 = new Trajectory(new TrajectoryPeice(new Pose2d(60,-12,0),0,0.3), true)
+                    .addLine(new TrajectoryPeice(new Pose2d(0,-12,0),Math.toRadians(-90),1))
                     .end();
             drive.followTrajectory(this,trajectory2);
             waitMillis(2000);

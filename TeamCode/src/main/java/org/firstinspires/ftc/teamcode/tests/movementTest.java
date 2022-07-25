@@ -27,11 +27,11 @@ public class movementTest extends LinearOpMode {
             drive.motors.get(i).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         }
         drive.setPose(-12,-12,Math.toRadians(0));
-        Trajectory trajectory1 = new Trajectory(new TrajectoryPeice(new Pose2d(0,0,0),0,24,0.3), true)
-                .addLine(new TrajectoryPeice(new Pose2d(48,0),0,24,1))
-                .addLine(new TrajectoryPeice(new Pose2d(48,48),0,24,1))
-                .addLine(new TrajectoryPeice(new Pose2d(0,48),0,24,1))
-                .addLine(new TrajectoryPeice(new Pose2d(0,0,0),0,24,1))
+        Trajectory trajectory1 = new Trajectory(new TrajectoryPeice(new Pose2d(0,0,0),0,0.3), true)
+                .addLine(new TrajectoryPeice(new Pose2d(48,0),0,1))
+                .addLine(new TrajectoryPeice(new Pose2d(48,48),0,1))
+                .addLine(new TrajectoryPeice(new Pose2d(0,48),0,1))
+                .addLine(new TrajectoryPeice(new Pose2d(0,0,0),0,1))
                 .end();
         drive.followTrajectory(this,trajectory1);
         waitMillis(2000);

@@ -723,7 +723,7 @@ public class SampleMecanumDrive {
         servos.get(2).setPosition(targetPos);
     }
     public void depositAtPoint(LinearOpMode opMode, Pose2d end){
-        target = new TrajectoryPeice(end,0,2,0);
+        target = new TrajectoryPeice(end,0,0);
         double side = Math.signum(end.y);
         while (opMode.opModeIsActive() && slidesCase <= 4) {
             startDeposit(new Pose2d(currentPose.getX(),currentPose.getY(),currentPose.getHeading()), new Pose2d(-13.0, 24.0 * side),13.5,3);
@@ -817,7 +817,7 @@ public class SampleMecanumDrive {
     }
 
     public void driveToPoint(LinearOpMode opMode, Pose2d target, Pose2d target2, boolean intake, double error, long maxTime, boolean forward){
-        this.target = new TrajectoryPeice(target,0,2,0);
+        this.target = new TrajectoryPeice(target,0,0);
         long startH = System.currentTimeMillis();
         update();
         boolean x = (Math.max(target.getX(),target2.getX()) + error > currentPose.getX() && Math.min(target.getX(),target2.getX()) - error < currentPose.getX());
@@ -843,72 +843,46 @@ public class SampleMecanumDrive {
     public static PID heading = new PID(2.5,0.03,0.05);
     public static PID velX = new PID(0.1,0,0);
     public static PID velY = new PID(0.1,0,0);
-    public static PID x = new PID(0.1,0,0);
-    public static PID y = new PID(0.1,0,0);
     double lastT = 0;
     double lastF = 0;
     double lastL = 0;
-    public void followTrajectory(LinearOpMode opMode, Trajectory trajectory){
+    public void followTrajectory(LinearOpMode opMode, Trajectory trajectory, boolean continueAfterTime){
         update();
         TrajectoryPeice targetPoint;
         lastLoop = System.nanoTime();
         trajectory.start();
-        while (opMode.opModeIsActive() && trajectory.points.size() != 0 && (((intakeCase <= 2 || intakeCase == 8) || currentPose.getX() <= 38) || !trajectory.points.get(0).intakeInterupt)){
-
+        long gameOver = System.currentTimeMillis();
+        while ((opMode.opModeIsActive() || (continueAfterTime && System.currentTimeMillis() - gameOver <= 900)) && trajectory.points.size() != 0 && (((intakeCase <= 2 || intakeCase == 8) || currentPose.getX() <= 38) || !trajectory.points.get(0).intakeInterupt)){
+            if (opMode.opModeIsActive()){
+                gameOver = System.currentTimeMillis();
+            }
             long currentTime = System.nanoTime();
             double loopTime = (lastLoop-currentTime)/1000000000.0;
             lastLoop = currentTime;
 
             update();
-            trajectory.update(currentPose,relCurrentVel);
-            targetPoint = trajectory.points.get(0);
-            double error = Math.sqrt(Math.pow(currentPose.x - targetPoint.x,2) + Math.pow(currentPose.y - targetPoint.y,2));
+            Pose2d relError = trajectory.update(currentPose,relCurrentVel);
 
-            Pose2d lastTargetPoint = trajectory.points.get(trajectory.points.size()-1);
-            double finalError = Math.sqrt(Math.pow(currentPose.x - lastTargetPoint.x,2) + Math.pow(currentPose.y - lastTargetPoint.y,2));
-
-            double targetAngle = Math.atan2(targetPoint.y - currentPose.y,targetPoint.x - currentPose.x);
-            double headingError = targetAngle - currentPose.heading;
-            double relErrorX = Math.cos(headingError) * error;
-            double relErrorY = Math.sin(headingError) * error;
-
-            headingError += trajectory.points.get(0).headingOffset;
-
-            if (finalError <= 8 && trajectory.points.size() < 100){
-                headingError = lastTargetPoint.heading - currentPose.heading;
-            }
-            while (Math.abs(headingError) > Math.PI){
-                headingError -= Math.PI * 2 * Math.signum(headingError);
-            }
-
-            double t = Math.signum(heading.update(headingError)-lastT) * Math.toRadians(120)/0.5 * loopTime + lastT; //Makes sure that it doesn't change target speed too quickly (turning)
+            double t = Math.signum(heading.update(relError.heading)-lastT) * Math.toRadians(120)/0.5 * loopTime + lastT; //Makes sure that it doesn't change target speed too quickly (turning)
             lastT = t;
 
             double f = 0;
             double l = 0;
-            double errorSpeedButBad = Math.abs(relErrorY) + Math.abs(relErrorX);
+            double errorSpeedButBad = Math.abs(relError.y) + Math.abs(relError.x);
             if (errorSpeedButBad != 0) {
-                double speedConstant = targetPoint.speed * Math.min(1.1 - Math.abs(t),1.0) * 0.9 / errorSpeedButBad;
-                f = Math.signum(velX.update(relErrorX * speedConstant * 55.0 - relCurrentVel.x)-lastF) * 15.0/0.5 * loopTime + lastF; //Makes sure that it doesn't change target speed too quickly (forward/back)
-                l = Math.signum(velY.update(relErrorY * speedConstant * 40.0 - relCurrentVel.y)-lastL) * 12.5/0.5 * loopTime + lastL; //Makes sure that it doesn't change target speed too quickly (left/right)
+                double speedConstant = trajectory.points.get(0).speed * Math.min(1.1 - Math.abs(t),1.0) * 0.9 / errorSpeedButBad;
+                f = Math.signum(velX.update(relError.x * speedConstant * 55.0 - relCurrentVel.x)-lastF) * 15.0/0.5 * loopTime + lastF; //Makes sure that it doesn't change target speed too quickly (forward/back)
+                l = Math.signum(velY.update(relError.y * speedConstant * 40.0 - relCurrentVel.y)-lastL) * 12.5/0.5 * loopTime + lastL; //Makes sure that it doesn't change target speed too quickly (left/right)
                 lastF = f;
                 lastL = l;
             }
 
-            //correct for horizontal error
-            double errorX = (trajectory.pastPoints.get(0).x - currentPose.x)*Math.cos(currentPose.heading) - (trajectory.pastPoints.get(0).y - currentPose.y)*Math.sin(currentPose.heading);
-            double errorY = (trajectory.pastPoints.get(0).x - currentPose.x)*Math.sin(currentPose.heading) + (trajectory.pastPoints.get(0).y - currentPose.y)*Math.cos(currentPose.heading);
-
-            //trying to make it so that it only corrects for the amount that is perpendicular to the driving
-            errorX *= Math.abs(Math.sin(trajectory.pastPoints.get(0).headingOffset));
-            errorY *= Math.abs(Math.cos(trajectory.pastPoints.get(0).headingOffset));
-
-            f += x.update(errorX);
-            l += y.update(errorY);
-
             pinMotorPowers(f-l-t,f+l-t,f-l+t,f+l+t);
         }
         pinMotorPowers(0,0,0,0);
+    }
+    public void followTrajectory(LinearOpMode opMode, Trajectory trajectory) {
+        followTrajectory(opMode,trajectory,false);
     }
     public void setSlidesLength(double inches, double speed) {
         targetSlidesPose = inches;
