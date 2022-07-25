@@ -28,13 +28,13 @@ public class lineTest extends LinearOpMode {
         }
         drive.setPose(0,-12,Math.toRadians(0));
         for (int i = 0; i < 4; i ++) {
-            Trajectory trajectory1 = new Trajectory(new TrajectoryPeice(new Pose2d(0,-12,0),0,18,0.2), true)
-                    .addLine(new TrajectoryPeice(new Pose2d(60,-12,0),0,18,1))
+            Trajectory trajectory1 = new Trajectory(new TrajectoryPeice(new Pose2d(0,-12,0),0,0.2), true)
+                    .addLine(new TrajectoryPeice(new Pose2d(60,-12,0),0,1))
                     .end();
             drive.followTrajectory(this,trajectory1);
             waitMillis(2000);
-            Trajectory trajectory2 = new Trajectory(new TrajectoryPeice(new Pose2d(60,-12,0),0,18,0.2), true)
-                    .addLine(new TrajectoryPeice(new Pose2d(0,-12,0),Math.toRadians(180),18,1))
+            Trajectory trajectory2 = new Trajectory(new TrajectoryPeice(new Pose2d(60,-12,0),0,0.2), true)
+                    .addLine(new TrajectoryPeice(new Pose2d(0,-12,0),Math.toRadians(180),1))
                     .end();
             drive.followTrajectory(this,trajectory1);
             waitMillis(2000);
